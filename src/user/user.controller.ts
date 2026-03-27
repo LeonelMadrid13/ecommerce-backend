@@ -32,8 +32,6 @@ export class UserController {
       );
       if (!user) return { error: 'Invalid credentials' };
 
-      console.log('SIGN JWT_SECRET:', process.env.JWT_SECRET);
-
       const payload = { sub: user.id, email: user.email, role: user.role };
       const token = this.jwtService.sign(payload);
 

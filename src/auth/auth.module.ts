@@ -15,9 +15,6 @@ import { JwtStrategy } from './jwt.strategy.js';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
         const secret = config.get<string>('JWT_SECRET');
-
-        console.log('JWT FROM CONFIG:', secret);
-
         if (!secret) {
           throw new Error('JWT_SECRET is not defined');
         }

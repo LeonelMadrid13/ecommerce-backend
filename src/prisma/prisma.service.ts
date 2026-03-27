@@ -11,7 +11,6 @@ export class PrismaService
     super({
       // Provide a local engine adapter for Prisma 7+
       adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }), // or 'library' depending on your setup
-      log: ['query', 'error'], // optional
     });
   }
 
