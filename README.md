@@ -1,98 +1,273 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# 🛒 E-commerce Backend API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A production-oriented backend built with **NestJS**, **Prisma**, and **PostgreSQL**, designed to demonstrate real-world backend architecture, authentication, and scalable patterns.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+# 📌 Overview
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+This project implements a modular backend system with:
 
-## Project setup
+* JWT-based authentication
+* Role-based access control (RBAC)
+* Prisma ORM for database management
+* Global error handling
+* Clean architecture using NestJS modules
 
-```bash
-$ pnpm install
+The goal is to showcase **real-world backend engineering practices**, not just CRUD operations.
+
+---
+
+# 🏗️ Architecture
+
+The project follows a **modular architecture (NestJS standard)**:
+
+```
+src/
+│
+├── auth/        # Authentication (JWT, strategies)
+├── user/        # User domain (controllers, services, DTOs)
+├── prisma/      # Database layer (Prisma service/module)
+├── common/      # Shared utilities (filters, guards, etc.)
+└── main.ts      # App bootstrap
 ```
 
-## Compile and run the project
+## Key Concepts
 
-```bash
-# development
-$ pnpm run start
+### 1. Module-based design
 
-# watch mode
-$ pnpm run start:dev
+Each domain is isolated into its own module:
 
-# production mode
-$ pnpm run start:prod
+* `AuthModule` → authentication & JWT
+* `UserModule` → user logic
+* `PrismaModule` → database access (shared globally)
+
+### 2. Dependency Injection (DI)
+
+Services are injected via NestJS DI system:
+
+* `PrismaService` → injected into services
+* `JwtService` → injected via `AuthModule`
+
+### 3. Request Flow
+
+```
+Request → Guard → Strategy → Controller → Service → Prisma → DB
 ```
 
-## Run tests
+---
 
-```bash
-# unit tests
-$ pnpm run test
+# 🔐 Authentication & Authorization
 
-# e2e tests
-$ pnpm run test:e2e
+## JWT Authentication
 
-# test coverage
-$ pnpm run test:cov
+* Uses `passport-jwt` strategy
+* Token signed with `JWT_SECRET`
+* Extracted from `Authorization: Bearer <token>`
+
+## Flow
+
+```
+Login → Generate JWT
+Request → JwtAuthGuard
+        → JwtStrategy
+        → req.user injected
+        → Controller
 ```
 
-## Deployment
+## Role-Based Access (RBAC)
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+Users have roles:
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+```
+USER
+ADMIN
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+These roles can be enforced via guards for protected routes.
 
-## Resources
+---
 
-Check out a few resources that may come in handy when working with NestJS:
+# 🗄️ Database Design
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+Using **PostgreSQL + Prisma ORM**
 
-## Support
+## Main Models
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+### User
 
-## Stay in touch
+* id
+* name
+* email (unique)
+* password (hashed)
+* role
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+### Product
 
-## License
+* id
+* name
+* description
+* price
+* stock
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+### Order
+
+* id
+* userId
+* total
+* status
+
+### OrderItem
+
+* orderId
+* productId
+* quantity
+* priceAtPurchase
+
+## Relationships
+
+* User → Orders (1:N)
+* Order → OrderItems (1:N)
+* Product → OrderItems (1:N)
+
+---
+
+# ⚙️ Key Decisions
+
+## 1. Prisma over raw SQL
+
+* Type safety
+* Faster development
+* Maintainable schema
+
+## 2. JWT over sessions
+
+* Stateless
+* Scalable for microservices
+* Works well with APIs
+
+## 3. Global Exception Filter
+
+* Centralized error handling
+* Consistent API responses
+* Cleaner debugging
+
+## 4. Modular Auth Design
+
+* Auth logic isolated in `AuthModule`
+* Reusable across modules
+
+## 5. Select-based queries
+
+Sensitive fields (like passwords) are excluded at query level using Prisma `select`.
+
+---
+
+# 🚀 How to Run Locally
+
+## 1. Clone repository
+
+```
+git clone <your-repo>
+cd ecommerce-backend
+```
+
+## 2. Install dependencies
+
+```
+pnpm install
+```
+
+## 3. Setup environment variables
+
+Create a `.env` file:
+
+```
+DATABASE_URL="postgresql://postgres:password@localhost:5432/postgres"
+JWT_SECRET="your_secret_key"
+PORT=3000
+```
+
+## 4. Run database migrations
+
+```
+npx prisma migrate dev
+```
+
+## 5. Generate Prisma client
+
+```
+npx prisma generate
+```
+
+## 6. Start the server
+
+```
+pnpm run start:dev
+```
+
+Server will run on:
+
+```
+http://localhost:3000
+```
+
+---
+
+# 🌐 Live Links
+
+> Add your deployed links here
+
+* API: [https://your-api-url.com](https://your-api-url.com)
+* Docs (Swagger): [https://your-api-url.com/docs](https://your-api-url.com/docs)
+
+---
+
+# 🧪 Testing the API
+
+Use tools like:
+
+* Postman
+* Insomnia
+
+### Example protected route:
+
+```
+GET /users/profile
+Authorization: Bearer <token>
+```
+
+---
+
+# 📈 Future Improvements
+
+* DTO validation (class-validator)
+* Role Guards (ADMIN vs USER enforcement)
+* Product module (CRUD + permissions)
+* Order processing logic
+* Logging system (Winston/Pino)
+* Rate limiting & security hardening
+* Dockerization
+* CI/CD pipeline
+
+---
+
+# 🧠 What This Project Demonstrates
+
+* Real-world backend architecture
+* Authentication & authorization flows
+* Database design with relationships
+* Error handling strategies
+* Clean, maintainable code structure
+
+---
+
+# 👨‍💻 Author
+
+Leonel Madrid
+
+---
+
+# 📄 License
+
+MIT
