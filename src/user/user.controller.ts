@@ -1,22 +1,56 @@
-import { Controller, Get, Post } from '@nestjs/common';
+// user/user.controller.ts
+import { Controller, Post, Body, Get, UseGuards, Req } from '@nestjs/common';
+import { UserService } from './user.service.js';
+import { JwtService } from '@nestjs/jwt';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 
-@Controller('user')
+@Controller('users')
 export class UserController {
-  @Get('/profile/:id')
-  getUserProfile() {
-    // Logic to get user profile
-    return { id: 1, name: 'John Doe', email: 'john.doe@example.com' };
+  constructor(
+    private userService: UserService,
+    private jwtService: JwtService,
+  ) {}
+
+  @Post('register')
+  async register(
+    @Body() body: { name: string; email: string; password: string },
+  ) {
+    try {
+      const user = await this.userService.createUser(body);
+      return { id: user.id, email: user.email, name: user.name };
+    } catch (error) {
+      return { error: error.message };
+    }
   }
 
-  @Post('/register')
-  registerUser() {
-    // Logic to register a new user
-    return { message: 'User registered successfully' };
+  @Post('login')
+  async login(@Body() body: { email: string; password: string }) {
+    try {
+      const user = await this.userService.validateUser(
+        body.email,
+        body.password,
+      );
+      if (!user) return { error: 'Invalid credentials' };
+
+      console.log('SIGN JWT_SECRET:', process.env.JWT_SECRET);
+
+      const payload = { sub: user.id, email: user.email, role: user.role };
+      const token = this.jwtService.sign(payload);
+
+      return { access_token: token };
+    } catch (error) {
+      return { error: error.message };
+    }
   }
 
-  @Post('/login')
-  loginUser() {
-    // Logic to authenticate user and generate token
-    return { message: 'User logged in successfully', token: 'your-jwt-token' };
+  @UseGuards(JwtAuthGuard)
+  @Get('profile')
+  async profile(@Req() req) {
+    // req.user populated by JwtStrategy
+    try {
+      return this.userService.findById(req.user.id);
+    } catch (error) {
+      return { error: error.message };
+    }
   }
 }
