@@ -33,10 +33,15 @@
     "@prisma/adapter-pg": "^7.5.0",
     "@prisma/client": "^7.5.0",
     "bcrypt": "^6.0.0",
+<<<<<<< HEAD
     "bullmq": "^5.71.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "ioredis": "^5.10.1",
+=======
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
+>>>>>>> 8fcf079e211a6783a28180b7f4947a15e547b241
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
