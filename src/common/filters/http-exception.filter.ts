@@ -16,29 +16,64 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'Internal server error';
+    let error = 'Internal Server Error';
 
-    if (exception instanceof Prisma.PrismaClientKnownRequestError) {
-      status = HttpStatus.BAD_REQUEST;
-      message = 'Database error';
-    } else if (exception instanceof HttpException) {
+    // HTTP errors
+    if (exception instanceof HttpException) {
       status = exception.getStatus();
+      error = exception.name;
 
       const exceptionResponse = exception.getResponse();
 
-      message =
-        typeof exceptionResponse === 'string'
-          ? exceptionResponse
-          : (exceptionResponse as any).message;
+      if (typeof exceptionResponse === 'string') {
+        message = exceptionResponse;
+      } else if (
+        typeof exceptionResponse === 'object' &&
+        exceptionResponse !== null
+      ) {
+        const res = exceptionResponse as any;
+        message = Array.isArray(res.message)
+          ? res.message.join(', ')
+          : res.message || message;
+
+        error = res.error || error;
+      }
+    } else if (isPrismaError(exception)) {
+      // Prisma errors
+      status = HttpStatus.BAD_REQUEST;
+      error = 'Database Error';
+
+      switch (exception.code) {
+        case 'P2002':
+          message = 'Unique constraint failed';
+          break;
+        case 'P2025':
+          message = 'Record not found';
+          break;
+        default:
+          message = 'Database error';
+      }
     }
 
-    // Optional: log error
-    console.error('ERROR:', exception);
+    // Logging
+    console.error({
+      message: exception instanceof Error ? exception.message : exception,
+      stack: exception instanceof Error ? exception.stack : null,
+      path: request.url,
+      timestamp: new Date().toISOString(),
+    });
 
     response.status(status).json({
+      success: false,
       statusCode: status,
       message,
+      error,
       timestamp: new Date().toISOString(),
       path: request.url,
     });
   }
+}
+
+function isPrismaError(e: unknown): e is Prisma.PrismaClientKnownRequestError {
+  return e instanceof Prisma.PrismaClientKnownRequestError;
 }

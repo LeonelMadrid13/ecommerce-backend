@@ -1,273 +1,153 @@
-# 🛒 E-commerce Backend API
+# ECommerce Backend
 
-A production-oriented backend built with **NestJS**, **Prisma**, and **PostgreSQL**, designed to demonstrate real-world backend architecture, authentication, and scalable patterns.
-
----
-
-# 📌 Overview
-
-This project implements a modular backend system with:
-
-* JWT-based authentication
-* Role-based access control (RBAC)
-* Prisma ORM for database management
-* Global error handling
-* Clean architecture using NestJS modules
-
-The goal is to showcase **real-world backend engineering practices**, not just CRUD operations.
+A production-oriented REST API built with **NestJS**, **Prisma**, and **PostgreSQL**. The goal is not just CRUD — it's a realistic backend that handles transactional integrity, async processing, and scalable architecture patterns.
 
 ---
 
-# 🏗️ Architecture
+## Stack
 
-The project follows a **modular architecture (NestJS standard)**:
+- **NestJS** — ESM, NodeNext, strict TypeScript
+- **Prisma ORM** — PostgreSQL
+- **BullMQ + Redis** — async job queue
+- **JWT + Passport** — authentication
+- **pnpm** — package manager
+
+---
+
+## Architecture
 
 ```
 src/
-│
-├── auth/        # Authentication (JWT, strategies)
-├── user/        # User domain (controllers, services, DTOs)
-├── prisma/      # Database layer (Prisma service/module)
-├── common/      # Shared utilities (filters, guards, etc.)
-└── main.ts      # App bootstrap
+├── auth/           # JWT strategy, guards
+├── user/           # User module
+├── product/        # Product CRUD
+├── order/          # Order module + processor
+├── queue/          # BullMQ setup, Redis client
+├── prisma/         # PrismaService (global)
+├── common/
+│   ├── filters/    # Global exception filter
+│   ├── guards/     # IdempotencyGuard
+│   └── interceptors/ # ResponseInterceptor, IdempotencyInterceptor
+└── main.ts
 ```
 
-## Key Concepts
+Each domain is isolated into its own module. `PrismaModule` is global. `QueueModule` exports both BullMQ and the Redis client for use across modules.
 
-### 1. Module-based design
+---
 
-Each domain is isolated into its own module:
+## Features
 
-* `AuthModule` → authentication & JWT
-* `UserModule` → user logic
-* `PrismaModule` → database access (shared globally)
+### Authentication
+- JWT-based auth via `passport-jwt`
+- Token extracted from `Authorization: Bearer <token>`
+- Role support: `USER` / `ADMIN`
 
-### 2. Dependency Injection (DI)
+### Products
+- Full CRUD
+- Price and stock validation
 
-Services are injected via NestJS DI system:
+### Orders
+- Async order processing via BullMQ
+- Orders are accepted immediately and fulfilled by a background worker
+- Worker runs inside a Prisma transaction: stock validation, optimistic locking, price capture
+- Automatic retries with exponential backoff (3 attempts)
+- Terminal statuses: `CONFIRMED` or `FAILED`
+- Idempotent order creation — duplicate requests return the original response
 
-* `PrismaService` → injected into services
-* `JwtService` → injected via `AuthModule`
+### API Layer
+- Standardized response envelope: `{ success, data, timestamp }`
+- Centralized exception handling: Prisma errors, HTTP exceptions, unknown errors
+- `ValidationPipe` with whitelist and transform enabled
 
-### 3. Request Flow
+---
+
+## Order Flow
 
 ```
-Request → Guard → Strategy → Controller → Service → Prisma → DB
+POST /orders
+  → JwtAuthGuard        validates token
+  → IdempotencyGuard    checks Redis for duplicate request
+  → OrderService        creates Order (PENDING) + enqueues job
+  → IdempotencyInterceptor  caches response in Redis (24h TTL)
+  → { orderId, status: "PENDING" }
+
+BullMQ Worker
+  → validate stock
+  → decrement stock (optimistic lock)
+  → update priceAtPurchase
+  → Order → CONFIRMED or FAILED
+```
+
+Client polls `GET /orders/:id` for final status.
+
+---
+
+## Data Model
+
+```
+User       id · name · email · password · role
+Product    id · name · description? · price · stock
+Order      id · userId · total · status · createdAt · updatedAt
+OrderItem  @@id([orderId, productId]) · quantity · priceAtPurchase
+
+ORDER_STATUS: PENDING · CONFIRMED · FAILED · CANCELLED
+ROLES:        USER · ADMIN
 ```
 
 ---
 
-# 🔐 Authentication & Authorization
+## Getting Started
 
-## JWT Authentication
+### 1. Clone and install
 
-* Uses `passport-jwt` strategy
-* Token signed with `JWT_SECRET`
-* Extracted from `Authorization: Bearer <token>`
-
-## Flow
-
-```
-Login → Generate JWT
-Request → JwtAuthGuard
-        → JwtStrategy
-        → req.user injected
-        → Controller
-```
-
-## Role-Based Access (RBAC)
-
-Users have roles:
-
-```
-USER
-ADMIN
-```
-
-These roles can be enforced via guards for protected routes.
-
----
-
-# 🗄️ Database Design
-
-Using **PostgreSQL + Prisma ORM**
-
-## Main Models
-
-### User
-
-* id
-* name
-* email (unique)
-* password (hashed)
-* role
-
-### Product
-
-* id
-* name
-* description
-* price
-* stock
-
-### Order
-
-* id
-* userId
-* total
-* status
-
-### OrderItem
-
-* orderId
-* productId
-* quantity
-* priceAtPurchase
-
-## Relationships
-
-* User → Orders (1:N)
-* Order → OrderItems (1:N)
-* Product → OrderItems (1:N)
-
----
-
-# ⚙️ Key Decisions
-
-## 1. Prisma over raw SQL
-
-* Type safety
-* Faster development
-* Maintainable schema
-
-## 2. JWT over sessions
-
-* Stateless
-* Scalable for microservices
-* Works well with APIs
-
-## 3. Global Exception Filter
-
-* Centralized error handling
-* Consistent API responses
-* Cleaner debugging
-
-## 4. Modular Auth Design
-
-* Auth logic isolated in `AuthModule`
-* Reusable across modules
-
-## 5. Select-based queries
-
-Sensitive fields (like passwords) are excluded at query level using Prisma `select`.
-
----
-
-# 🚀 How to Run Locally
-
-## 1. Clone repository
-
-```
+```bash
 git clone <your-repo>
 cd ecommerce-backend
-```
-
-## 2. Install dependencies
-
-```
 pnpm install
 ```
 
-## 3. Setup environment variables
+### 2. Environment variables
 
-Create a `.env` file:
-
-```
+```env
 DATABASE_URL="postgresql://postgres:password@localhost:5432/postgres"
 JWT_SECRET="your_secret_key"
+REDIS_HOST=localhost
+REDIS_PORT=6379
 PORT=3000
 ```
 
-## 4. Run database migrations
+### 3. Start Redis
 
+```bash
+docker compose up -d redis
 ```
+
+### 4. Run migrations and seed
+
+```bash
 npx prisma migrate dev
+npx prisma db seed
 ```
 
-## 5. Generate Prisma client
+### 5. Start the server
 
-```
-npx prisma generate
-```
-
-## 6. Start the server
-
-```
-pnpm run start:dev
-```
-
-Server will run on:
-
-```
-http://localhost:3000
+```bash
+pnpm start:dev
 ```
 
 ---
 
-# 🌐 Live Links
+## What's Next
 
-> Add your deployed links here
-
-* API: [https://your-api-url.com](https://your-api-url.com)
-* Docs (Swagger): [https://your-api-url.com/docs](https://your-api-url.com/docs)
-
----
-
-# 🧪 Testing the API
-
-Use tools like:
-
-* Postman
-* Insomnia
-
-### Example protected route:
-
-```
-GET /users/profile
-Authorization: Bearer <token>
-```
+- **Rate limiting** — throttle auth and order endpoints, brute-force protection
+- **Refresh tokens** — token rotation with revocation strategy
+- **Observability** — structured logging (Pino), request tracing, worker metrics
+- **Swagger** — auto-generated API docs
+- **Docker** — containerize app + postgres + redis
+- **Deployment** — AWS / Railway
 
 ---
 
-# 📈 Future Improvements
-
-* DTO validation (class-validator)
-* Role Guards (ADMIN vs USER enforcement)
-* Product module (CRUD + permissions)
-* Order processing logic
-* Logging system (Winston/Pino)
-* Rate limiting & security hardening
-* Dockerization
-* CI/CD pipeline
-
----
-
-# 🧠 What This Project Demonstrates
-
-* Real-world backend architecture
-* Authentication & authorization flows
-* Database design with relationships
-* Error handling strategies
-* Clean, maintainable code structure
-
----
-
-# 👨‍💻 Author
+## Author
 
 Leonel Madrid
-
----
-
-# 📄 License
-
-MIT

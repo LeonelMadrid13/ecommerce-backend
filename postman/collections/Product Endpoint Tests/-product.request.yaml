@@ -1,0 +1,18 @@
+$kind: http-request
+name: /product
+url: localhost:3000/product
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"name\": \"Laptop\",\r
+
+    \  \"description\": \"Gaming laptop\",\r
+
+    \  \"price\": 1500,\r
+
+    \  \"stock\": 10\r
+
+    }"
+order: 1774634094908
