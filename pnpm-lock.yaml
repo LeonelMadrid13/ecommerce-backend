@@ -42,11 +42,17 @@ importers:
         specifier: ^6.0.0
         version: 6.0.0
 <<<<<<< HEAD
+<<<<<<< HEAD
       bullmq:
         specifier: ^5.71.1
         version: 5.71.1
 =======
 >>>>>>> 8fcf079e211a6783a28180b7f4947a15e547b241
+=======
+      bullmq:
+        specifier: ^5.71.1
+        version: 5.71.1
+>>>>>>> 0788c3b496aa181220642cab1cc1a580f727895b
       class-transformer:
         specifier: ^0.5.1
         version: 0.5.1
@@ -54,11 +60,17 @@ importers:
         specifier: ^0.15.1
         version: 0.15.1
 <<<<<<< HEAD
+<<<<<<< HEAD
       ioredis:
         specifier: ^5.10.1
         version: 5.10.1
 =======
 >>>>>>> 8fcf079e211a6783a28180b7f4947a15e547b241
+=======
+      ioredis:
+        specifier: ^5.10.1
+        version: 5.10.1
+>>>>>>> 0788c3b496aa181220642cab1cc1a580f727895b
       passport:
         specifier: ^0.7.0
         version: 0.7.0
@@ -4737,6 +4749,16 @@ snapshots:
       jsonwebtoken: 9.0.3
 
   '@nestjs/mapped-types@2.1.0(@nestjs/common@11.1.17(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)':
+    dependencies:
+      '@nestjs/common': 11.1.17(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      reflect-metadata: 0.2.2
+    optionalDependencies:
+      class-transformer: 0.5.1
+      class-validator: 0.15.1
+
+  '@nestjs/passport@11.0.5(@nestjs/common@11.1.17(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(passport@0.7.0)':
+    dependencies:
+      '@nestjs/common': 11.1.17(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
     dependencies:
       '@nestjs/common': 11.1.17(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       reflect-metadata: 0.2.2
