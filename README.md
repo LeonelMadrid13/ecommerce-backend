@@ -1,5 +1,7 @@
 # ECommerce Backend
 
+> 🚧 **Work in Progress** — Core features are functional and production-ready. Active development ongoing.
+
 A production-oriented REST API built with **NestJS**, **Prisma**, and **PostgreSQL**. The goal is not just CRUD — it's a realistic backend that handles transactional integrity, async processing, and scalable architecture patterns.
 
 ---
@@ -15,7 +17,6 @@ A production-oriented REST API built with **NestJS**, **Prisma**, and **PostgreS
 ---
 
 ## Architecture
-
 ```
 src/
 ├── auth/           # JWT strategy, guards
@@ -62,7 +63,6 @@ Each domain is isolated into its own module. `PrismaModule` is global. `QueueMod
 ---
 
 ## Order Flow
-
 ```
 POST /orders
   → JwtAuthGuard        validates token
@@ -83,7 +83,6 @@ Client polls `GET /orders/:id` for final status.
 ---
 
 ## Data Model
-
 ```
 User       id · name · email · password · role
 Product    id · name · description? · price · stock
@@ -99,7 +98,6 @@ ROLES:        USER · ADMIN
 ## Getting Started
 
 ### 1. Clone and install
-
 ```bash
 git clone <your-repo>
 cd ecommerce-backend
@@ -107,7 +105,6 @@ pnpm install
 ```
 
 ### 2. Environment variables
-
 ```env
 DATABASE_URL="postgresql://postgres:password@localhost:5432/postgres"
 JWT_SECRET="your_secret_key"
@@ -117,34 +114,39 @@ PORT=3000
 ```
 
 ### 3. Start Redis
-
 ```bash
 docker compose up -d redis
 ```
 
 ### 4. Run migrations and seed
-
 ```bash
 npx prisma migrate dev
 npx prisma db seed
 ```
 
 ### 5. Start the server
-
 ```bash
 pnpm start:dev
 ```
 
 ---
 
-## What's Next
+## Roadmap
 
-- **Rate limiting** — throttle auth and order endpoints, brute-force protection
-- **Refresh tokens** — token rotation with revocation strategy
-- **Observability** — structured logging (Pino), request tracing, worker metrics
-- **Swagger** — auto-generated API docs
-- **Docker** — containerize app + postgres + redis
-- **Deployment** — AWS / Railway
+| Status | Feature |
+|--------|---------|
+| ✅ Done | JWT auth + role support |
+| ✅ Done | Product CRUD + stock validation |
+| ✅ Done | Async order processing (BullMQ) |
+| ✅ Done | Idempotency layer (Redis) |
+| ✅ Done | Optimistic locking + transactions |
+| ✅ Done | Jest test suite |
+| 🔄 In progress | Docker — full containerization (app + postgres + redis) |
+| 📋 Planned | Rate limiting — brute-force protection |
+| 📋 Planned | Refresh tokens — rotation + revocation |
+| 📋 Planned | Observability — Pino logging + request tracing |
+| 📋 Planned | Swagger — auto-generated API docs |
+| 📋 Planned | Deployment — AWS / Railway |
 
 ---
 
