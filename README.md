@@ -16,6 +16,12 @@ A production-oriented REST API built with **NestJS**, **Prisma**, and **PostgreS
 
 ---
 
+## Architecture Overview
+
+![Architecture diagram](./public/ecommerce_backend_architecture.svg)
+
+---
+
 ## Architecture
 ```
 src/
