@@ -1,18 +1,93 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { jest } from '@jest/globals';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { UserService } from './user.service.js';
+import { PrismaService } from '../prisma/prisma.service.js';
+
+const mockPrisma = {
+  user: {
+    create: jest.fn(),
+    findMany: jest.fn(),
+    findUnique: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+  },
+};
 
 describe('UserService', () => {
   let service: UserService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [UserService],
+      providers: [
+        UserService,
+        { provide: PrismaService, useValue: mockPrisma },
+      ],
     }).compile();
 
     service = module.get<UserService>(UserService);
+    jest.clearAllMocks();
   });
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  describe('createUser', () => {
+    it('should throw BadRequestException if email is invalid', async () => {
+      try {
+        await service.createUser({
+          name: 'Test',
+          email: 'invalid-email',
+          password: 'password',
+        });
+        fail('should have thrown');
+      } catch (err) {
+        expect(err).toBeInstanceOf(BadRequestException);
+        expect((err as BadRequestException).message).toBe(
+          'Invalid email format',
+        );
+      }
+    });
+
+    it('should throw BadRequestException if password is too short', async () => {
+      try {
+        await service.createUser({
+          name: 'Test',
+          email: 'test@example.com',
+          password: 'short',
+        });
+        fail('should have thrown');
+      } catch (err) {
+        expect(err).toBeInstanceOf(BadRequestException);
+        expect((err as BadRequestException).message).toBe(
+          'Password must be at least 8 characters long',
+        );
+      }
+    });
+  });
+
+  describe('validateUser', () => {
+    it('should return null if user does not exist', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+      const result = await service.validateUser(
+        'non-existent@example.com',
+        'password',
+      );
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('findById', () => {
+    it('should throw NotFoundException if user does not exist', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+      try {
+        await service.findById('non-existent-id');
+        fail('should have thrown');
+      } catch (err) {
+        expect(err).toBeInstanceOf(NotFoundException);
+        expect((err as NotFoundException).message).toBe('User not found');
+      }
+    });
   });
 });

@@ -65,11 +65,13 @@ export class OrderService {
   async findById(userId: string, id: string) {
     const order = await this.prisma.order.findFirst({
       where: { id, userId },
+      include: { orderItems: true }, // add this
     });
 
     if (!order) {
       throw new NotFoundException('Order not found');
     }
+
     return order;
   }
 

@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import * as bcrypt from 'bcrypt';
 
@@ -7,10 +11,23 @@ export class UserService {
   constructor(private readonly prisma: PrismaService) {}
 
   async createUser(data: { name: string; email: string; password: string }) {
+    // validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(data.email)) {
+      throw new BadRequestException('Invalid email format');
+    }
+
+    // validate password length
+    if (data.password.length < 8) {
+      throw new BadRequestException(
+        'Password must be at least 8 characters long',
+      );
+    }
+
     const existing = await this.prisma.user.findUnique({
       where: { email: data.email },
     });
-    if (existing) throw new Error('Email already in use');
+    if (existing) throw new BadRequestException('Email already in use');
 
     const hashed = await bcrypt.hash(data.password, 10);
     return this.prisma.user.create({
@@ -42,7 +59,7 @@ export class UserService {
       where: { id },
       select: userSafeSelect,
     });
-    if (!user) throw new Error('User not found');
+    if (!user) throw new NotFoundException('User not found');
 
     return user;
   }
