@@ -11,19 +11,6 @@ export class UserService {
   constructor(private readonly prisma: PrismaService) {}
 
   async createUser(data: { name: string; email: string; password: string }) {
-    // validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(data.email)) {
-      throw new BadRequestException('Invalid email format');
-    }
-
-    // validate password length
-    if (data.password.length < 8) {
-      throw new BadRequestException(
-        'Password must be at least 8 characters long',
-      );
-    }
-
     const existing = await this.prisma.user.findUnique({
       where: { email: data.email },
     });

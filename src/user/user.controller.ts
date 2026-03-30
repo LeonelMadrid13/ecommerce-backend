@@ -15,40 +15,25 @@ export class UserController {
   async register(
     @Body() body: { name: string; email: string; password: string },
   ) {
-    try {
-      const user = await this.userService.createUser(body);
-      return { id: user.id, email: user.email, name: user.name };
-    } catch (error) {
-      return { error: error.message };
-    }
+    const user = await this.userService.createUser(body);
+    return { id: user.id, email: user.email, name: user.name };
   }
 
   @Post('login')
   async login(@Body() body: { email: string; password: string }) {
-    try {
-      const user = await this.userService.validateUser(
-        body.email,
-        body.password,
-      );
-      if (!user) return { error: 'Invalid credentials' };
+    const user = await this.userService.validateUser(body.email, body.password);
+    if (!user) return { error: 'Invalid credentials' };
 
-      const payload = { sub: user.id, email: user.email, role: user.role };
-      const token = this.jwtService.sign(payload);
+    const payload = { sub: user.id, email: user.email, role: user.role };
+    const token = this.jwtService.sign(payload);
 
-      return { access_token: token };
-    } catch (error) {
-      return { error: error.message };
-    }
+    return { access_token: token };
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('profile')
   async profile(@Req() req) {
     // req.user populated by JwtStrategy
-    try {
-      return this.userService.findById(req.user.id);
-    } catch (error) {
-      return { error: error.message };
-    }
+    return this.userService.findById(req.user.id);
   }
 }

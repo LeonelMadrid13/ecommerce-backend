@@ -1,6 +1,7 @@
 import { jest } from '@jest/globals';
+import type { Mock } from 'jest-mock';
 
-export const PrismaClient = jest.fn().mockImplementation(() => ({
+export const PrismaClient: Mock = jest.fn().mockImplementation(() => ({
   $connect: jest.fn(),
   $disconnect: jest.fn(),
   $transaction: jest.fn(),
