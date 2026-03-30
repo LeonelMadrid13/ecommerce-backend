@@ -1,3 +1,5 @@
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { Module } from '@nestjs/common';
 
 import { AppController } from './app.controller.js';
@@ -14,6 +16,15 @@ import { QueueModule } from './queue/queue.module.js';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          name: 'global',
+          ttl: 60000,
+          limit: 100,
+        },
+      ],
+    }),
     UserModule,
     PrismaModule,
     AuthModule,
@@ -22,6 +33,13 @@ import { QueueModule } from './queue/queue.module.js';
     QueueModule,
   ],
   controllers: [AppController],
-  providers: [AppService, PrismaService],
+  providers: [
+    AppService,
+    PrismaService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

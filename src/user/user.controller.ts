@@ -1,8 +1,10 @@
 // user/user.controller.ts
 import { Controller, Post, Body, Get, UseGuards, Req } from '@nestjs/common';
-import { UserService } from './user.service.js';
+import { Throttle } from '@nestjs/throttler';
 import { JwtService } from '@nestjs/jwt';
+
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
+import { UserService } from './user.service.js';
 
 @Controller('users')
 export class UserController {
@@ -20,6 +22,7 @@ export class UserController {
   }
 
   @Post('login')
+  @Throttle({ global: { ttl: 60000, limit: 5 } })
   async login(@Body() body: { email: string; password: string }) {
     const user = await this.userService.validateUser(body.email, body.password);
     if (!user) return { error: 'Invalid credentials' };
