@@ -1,4 +1,3 @@
-// user/user.controller.ts
 import { Controller, Post, Body, Get, UseGuards, Req } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { JwtService } from '@nestjs/jwt';

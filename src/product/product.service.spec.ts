@@ -1,4 +1,3 @@
-// src/product/product.service.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
 import { jest } from '@jest/globals';
 import { BadRequestException, NotFoundException } from '@nestjs/common';

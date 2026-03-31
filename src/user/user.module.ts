@@ -1,4 +1,3 @@
-// src/user/user.module.ts
 import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { UserService } from './user.service.js';
