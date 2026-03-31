@@ -19,10 +19,14 @@ scripts:
 
       if (response.data?.access_token) {\r
 
-      \  pm.environment.set('access_token', response.data.access_token);\r
+      \  pm.collectionVariables.set('access_token',
+      response.data.access_token);\r
 
-      \  pm.environment.set('refresh_token', response.data.refresh_token);\r
+      \  pm.collectionVariables.set('refresh_token',
+      response.data.refresh_token);\r
+
+      \  console.log('tokens saved to collection variables');\r
 
       }"
     language: text/javascript
-order: 1774916104711
+order: 2295620984669123

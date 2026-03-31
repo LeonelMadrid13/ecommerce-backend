@@ -4,7 +4,6 @@ url: localhost:3000/order
 method: POST
 headers:
   Idempotency-Key: "{{$guid}}"
-  Authorization: "{{Authorization}}"
 body:
   type: json
   content: "{\r
@@ -21,5 +20,7 @@ body:
 
     }"
 auth:
-  type: noauth
-order: 1774717774255
+  type: bearer
+  credentials:
+    token: "{{access_token}}"
+order: 1774950680045

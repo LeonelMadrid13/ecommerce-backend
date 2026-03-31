@@ -1,8 +1,8 @@
 $kind: http-request
 name: /product/:id
 url: localhost:3000/product/7f3f6583-4531-4240-b4e8-b9289b54a766
-method: DELETE
+method: PUT
 body:
   type: json
-  content: ""
-order: 4495020850529991
+  content: "{\r\n  \"stock\": 9\r\n}"
+order: 3996232280268664
