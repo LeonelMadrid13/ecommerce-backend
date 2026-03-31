@@ -1,0 +1,28 @@
+$kind: http-request
+name: /auth/login
+url: localhost:3000/auth/login
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \    \"email\": \"test@example.com\",\r
+
+    \    \"password\": \"password123\"\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: "const response = pm.response.json();\r
+
+      \r
+
+      if (response.data?.access_token) {\r
+
+      \  pm.environment.set('access_token', response.data.access_token);\r
+
+      \  pm.environment.set('refresh_token', response.data.refresh_token);\r
+
+      }"
+    language: text/javascript
+order: 1774916104711

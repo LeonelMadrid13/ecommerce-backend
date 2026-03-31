@@ -1,41 +1,14 @@
-import { Controller, Post, Body, Get, UseGuards, Req } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
-import { JwtService } from '@nestjs/jwt';
-
-import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
+import { Controller, Get, UseGuards, Req } from '@nestjs/common';
 import { UserService } from './user.service.js';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 
 @Controller('users')
 export class UserController {
-  constructor(
-    private userService: UserService,
-    private jwtService: JwtService,
-  ) {}
-
-  @Post('register')
-  async register(
-    @Body() body: { name: string; email: string; password: string },
-  ) {
-    const user = await this.userService.createUser(body);
-    return { id: user.id, email: user.email, name: user.name };
-  }
-
-  @Post('login')
-  @Throttle({ global: { ttl: 60000, limit: 5 } })
-  async login(@Body() body: { email: string; password: string }) {
-    const user = await this.userService.validateUser(body.email, body.password);
-    if (!user) return { error: 'Invalid credentials' };
-
-    const payload = { sub: user.id, email: user.email, role: user.role };
-    const token = this.jwtService.sign(payload);
-
-    return { access_token: token };
-  }
+  constructor(private userService: UserService) {}
 
   @UseGuards(JwtAuthGuard)
   @Get('profile')
-  async profile(@Req() req) {
-    // req.user populated by JwtStrategy
+  profile(@Req() req) {
     return this.userService.findById(req.user.id);
   }
 }
