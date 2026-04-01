@@ -1,6 +1,8 @@
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { LoggerModule } from 'nestjs-pino';
 import { APP_GUARD } from '@nestjs/core';
 import { Module } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 
 import { AppController } from './app.controller.js';
 import { ConfigModule } from '@nestjs/config';
@@ -16,6 +18,34 @@ import { QueueModule } from './queue/queue.module.js';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    LoggerModule.forRoot({
+      pinoHttp: {
+        autoLogging: true,
+        quietReqLogger: true,
+        genReqId: () => randomUUID(),
+        transport:
+          process.env.NODE_ENV === 'development'
+            ? {
+                target: 'pino-pretty',
+                options: { colorize: true, singleLine: true },
+              }
+            : undefined,
+        customProps: () => ({ context: 'HTTP' }),
+        serializers: {
+          req(req) {
+            return {
+              method: req.method,
+              url: req.url,
+            };
+          },
+          res(res) {
+            return {
+              statusCode: res.statusCode,
+            };
+          },
+        },
+      },
+    }),
     ThrottlerModule.forRoot({
       throttlers: [
         {

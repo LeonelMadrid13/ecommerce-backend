@@ -1,5 +1,5 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Logger } from '@nestjs/common';
+import { PinoLogger, InjectPinoLogger } from 'nestjs-pino';
 import { Job } from 'bullmq';
 
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -15,9 +15,11 @@ class NonRetryableError extends Error {
 
 @Processor(QUEUES.ORDERS)
 export class OrderProcessor extends WorkerHost {
-  private readonly logger = new Logger(OrderProcessor.name);
-
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    @InjectPinoLogger(OrderProcessor.name)
+    private readonly logger: PinoLogger,
+  ) {
     super();
   }
 
@@ -32,8 +34,9 @@ export class OrderProcessor extends WorkerHost {
   ): Promise<void> {
     const { orderId } = job.data;
 
-    this.logger.log(
-      `Processing order ${orderId} — attempt ${job.attemptsMade + 1}`,
+    this.logger.info(
+      { orderId, attempt: job.attemptsMade + 1 },
+      'Processing order',
     );
 
     try {
@@ -49,7 +52,8 @@ export class OrderProcessor extends WorkerHost {
 
         if (order.status !== 'PENDING') {
           this.logger.warn(
-            `Order ${orderId} already in status ${order.status}, skipping`,
+            { orderId, status: order.status },
+            'Order already processed, skipping',
           );
           return;
         }
@@ -119,7 +123,7 @@ export class OrderProcessor extends WorkerHost {
         });
       });
 
-      this.logger.log(`Order ${orderId} confirmed`);
+      this.logger.info({ orderId }, 'Order confirmed');
     } catch (err) {
       const isNonRetryable = err instanceof NonRetryableError;
       const exhausted = job.attemptsMade + 1 >= (job.opts.attempts ?? 1);
@@ -130,15 +134,14 @@ export class OrderProcessor extends WorkerHost {
           data: { status: 'FAILED' },
         });
 
-        this.logger.error(
-          `Order ${orderId} failed permanently: ${(err as Error).message}`,
-        );
+        this.logger.error({ orderId, err }, 'Order failed permanently');
 
         return;
       }
 
       this.logger.warn(
-        `Order ${orderId} attempt ${job.attemptsMade + 1} failed, will retry`,
+        { orderId, attempt: job.attemptsMade + 1 },
+        'Order attempt failed, retrying',
       );
 
       throw err;
