@@ -1,0 +1,5 @@
+$kind: collection
+name: New Collection
+variables:
+  access_token: ""
+  refresh_token: ""

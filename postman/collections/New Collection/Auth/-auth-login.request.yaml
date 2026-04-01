@@ -1,0 +1,32 @@
+$kind: http-request
+name: /auth/login
+url: localhost:3000/auth/login
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \    \"email\": \"test@example.com\",\r
+
+    \    \"password\": \"password123\"\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: "const response = pm.response.json();\r
+
+      \r
+
+      if (response.data?.access_token) {\r
+
+      \  pm.collectionVariables.set('access_token',
+      response.data.access_token);\r
+
+      \  pm.collectionVariables.set('refresh_token',
+      response.data.refresh_token);\r
+
+      \  console.log('tokens saved to collection variables');\r
+
+      }"
+    language: text/javascript
+order: 2295620984669123

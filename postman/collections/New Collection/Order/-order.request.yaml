@@ -1,0 +1,26 @@
+$kind: http-request
+name: /order
+url: localhost:3000/order
+method: POST
+headers:
+  Idempotency-Key: "{{$guid}}"
+body:
+  type: json
+  content: "{\r
+
+    \  \"items\": [\r
+
+    \    { \"productId\": \"1481605f-4df4-4137-90fd-81ba2303ec13\",
+    \"quantity\": 2 },\r
+
+    \    { \"productId\": \"af5e3d70-4842-4e86-999b-8df76a6708a5\",
+    \"quantity\": 1 }\r
+
+    \  ]\r
+
+    }"
+auth:
+  type: bearer
+  credentials:
+    token: "{{access_token}}"
+order: 1774950680045

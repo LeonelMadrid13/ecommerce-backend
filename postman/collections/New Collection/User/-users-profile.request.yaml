@@ -1,0 +1,9 @@
+$kind: http-request
+name: /users/profile
+url: localhost:3000/users/profile
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{access_token}}"
+order: 1774950692645

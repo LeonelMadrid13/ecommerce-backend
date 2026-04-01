@@ -1,0 +1,12 @@
+$kind: http-request
+name: /order
+url: localhost:3000/order
+method: GET
+body:
+  type: json
+  content: ""
+auth:
+  type: bearer
+  credentials:
+    token: "{{access_token}}"
+order: 111659552414554
