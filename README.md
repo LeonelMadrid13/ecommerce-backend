@@ -147,12 +147,11 @@ pnpm start:dev
 | ✅ Done | Idempotency layer (Redis) |
 | ✅ Done | Optimistic locking + transactions |
 | ✅ Done | Jest test suite |
-| 🔄 In progress | Docker — full containerization (app + postgres + redis) |
-| 📋 Planned | Rate limiting — brute-force protection |
-| 📋 Planned | Refresh tokens — rotation + revocation |
-| 📋 Planned | Observability — Pino logging + request tracing |
-| 📋 Planned | Swagger — auto-generated API docs |
-| 📋 Planned | Deployment — AWS / Railway |
+| ✅ Done | Rate limiting — brute-force protection |
+| ✅ Done | Refresh tokens — rotation + revocation |
+| ✅ Done | Observability — Pino logging + request tracing |
+| ✅ Done | Swagger — auto-generated API docs |
+| 🔄 In progress | Deployment — AWS / Railway |
 
 ---
 
