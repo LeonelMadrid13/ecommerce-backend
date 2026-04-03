@@ -155,6 +155,22 @@ pnpm start:dev
 
 ---
 
+## V2 — Microservices
+
+The current monolithic architecture is designed with clean module boundaries to support a future migration to microservices.
+
+| Service | Responsibility |
+|---------|---------------|
+| Auth Service | JWT, refresh tokens, session management |
+| User Service | User management, profiles |
+| Product Service | Inventory, pricing, stock |
+| Order Service | Order lifecycle, async processing |
+| Notification Service | Email, webhooks, order status events |
+
+Inter-service communication via message broker (RabbitMQ or Kafka). Each service owns its own database.
+
+---
+
 ## Author
 
 Leonel Madrid
