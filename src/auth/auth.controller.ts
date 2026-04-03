@@ -5,12 +5,14 @@ import {
   UnauthorizedException,
   HttpCode,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { AuthService } from './auth.service.js';
 import { UserService } from '../user/user.service.js';
 import { CreateUserDto } from '../user/dto/create-user.dto.js';
 import { LoginDto } from '../user/dto/login.dto.js';
 import { Throttle } from '@nestjs/throttler';
 
+@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -18,12 +20,14 @@ export class AuthController {
     private readonly userService: UserService,
   ) {}
 
+  @ApiOperation({ summary: 'Register a new user' })
   @Post('register')
   async register(@Body() dto: CreateUserDto) {
     const user = await this.userService.createUser(dto);
     return { id: user.id, email: user.email, name: user.name };
   }
 
+  @ApiOperation({ summary: 'Login and get tokens' })
   @Post('login')
   @HttpCode(200)
   @Throttle({ global: { ttl: 60000, limit: 5 } })
@@ -37,6 +41,7 @@ export class AuthController {
     return this.authService.login(user.id, user.email, user.role);
   }
 
+  @ApiOperation({ summary: 'Refresh access token' })
   @Post('refresh')
   @HttpCode(200)
   async refresh(@Body() body: { refresh_token: string }) {
@@ -47,6 +52,7 @@ export class AuthController {
     return this.authService.refresh(body.refresh_token);
   }
 
+  @ApiOperation({ summary: 'Logout and revoke refresh token' })
   @Post('logout')
   @HttpCode(200)
   async logout(@Body() body: { refresh_token: string }) {
