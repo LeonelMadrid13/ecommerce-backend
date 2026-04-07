@@ -1,25 +1,144 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import {
+  ConflictException,
+  INestApplication,
+  ValidationPipe,
+} from '@nestjs/common';
+import { jest } from '@jest/globals';
 import request from 'supertest';
-import { App } from 'supertest/types';
-import { AppModule } from './../src/app.module';
+import { ProductController } from '../src/product/product.controller.js';
+import { ProductService } from '../src/product/product.service.js';
+import { JwtAuthGuard } from '../src/auth/jwt-auth.guard.js';
+import { RolesGuard } from '../src/common/guards/roles.guard.js';
 
-describe('AppController (e2e)', () => {
-  let app: INestApplication<App>;
+describe('Products E2E (TDD)', () => {
+  let app: INestApplication;
 
-  beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
+  type ProductServiceMock = {
+    create: jest.Mock<(...args: any[]) => any>;
+    findAll: jest.Mock<(...args: any[]) => any>;
+    findOne: jest.Mock<(...args: any[]) => any>;
+    update: jest.Mock<(...args: any[]) => any>;
+    remove: jest.Mock<(...args: any[]) => any>;
+  };
+
+  const mockProductService: ProductServiceMock = {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findOne: jest.fn(),
+    update: jest.fn(),
+    remove: jest.fn(),
+  };
+
+  const jwtCanActivate = jest.fn();
+  const rolesCanActivate = jest.fn();
+
+  const mockJwtAuthGuard = {
+    canActivate: jwtCanActivate,
+  };
+
+  const mockRolesGuard = {
+    canActivate: rolesCanActivate,
+  };
+
+  beforeAll(async () => {
+    const builder = Test.createTestingModule({
+      controllers: [ProductController],
+      providers: [{ provide: ProductService, useValue: mockProductService }],
+    });
+
+    builder.overrideGuard(JwtAuthGuard).useValue(mockJwtAuthGuard);
+    builder.overrideGuard(RolesGuard).useValue(mockRolesGuard);
+
+    const moduleFixture: TestingModule = await builder.compile();
 
     app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    );
     await app.init();
   });
 
-  it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/')
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockJwtAuthGuard.canActivate.mockReturnValue(true);
+    mockRolesGuard.canActivate.mockReturnValue(true);
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('create product (valid)', async () => {
+    mockProductService.create.mockResolvedValue({
+      id: 'product-1',
+      name: 'Laptop',
+      price: 1500,
+      stock: 10,
+    });
+
+    await request(app.getHttpServer())
+      .post('/products')
+      .send({ name: 'Laptop', price: 1500, stock: 10 })
+      .expect(201)
+      .expect(({ body }) => {
+        expect(body).toEqual(expect.objectContaining({ id: 'product-1' }));
+      });
+
+    expect(mockProductService.create).toHaveBeenCalledWith({
+      name: 'Laptop',
+      price: 1500,
+      stock: 10,
+    });
+  });
+
+  it('create product (invalid input)', async () => {
+    await request(app.getHttpServer())
+      .post('/products')
+      .send({ name: 'Laptop', price: 'bad-price', stock: -3 })
+      .expect(400);
+
+    expect(mockProductService.create).not.toHaveBeenCalled();
+  });
+
+  it('update product with optimistic locking conflict', async () => {
+    mockProductService.update.mockRejectedValue(
+      new ConflictException('Version conflict'),
+    );
+
+    await request(app.getHttpServer())
+      .patch('/products/product-1')
+      .send({ price: 1600 })
+      .expect(409)
+      .expect(({ body }) => {
+        expect(body).toEqual(
+          expect.objectContaining({ message: 'Version conflict' }),
+        );
+      });
+  });
+
+  it('fetch product list', async () => {
+    mockProductService.findAll.mockResolvedValue([
+      { id: 'p1', name: 'Laptop', price: 1500, stock: 10 },
+      { id: 'p2', name: 'Mouse', price: 50, stock: 100 },
+    ]);
+
+    await request(app.getHttpServer())
+      .get('/products')
       .expect(200)
-      .expect('Hello World!');
+      .expect(({ body }) => {
+        expect(body).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ id: 'p1' }),
+            expect.objectContaining({ id: 'p2' }),
+          ]),
+        );
+      });
+
+    expect(mockProductService.findAll).toHaveBeenCalled();
   });
 });

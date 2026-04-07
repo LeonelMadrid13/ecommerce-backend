@@ -1,4 +1,3 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -7,7 +6,7 @@ import { jest } from '@jest/globals';
 import { AuthService } from './auth.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
-const mockPrisma = {
+const mockPrisma: any = {
   refreshToken: {
     create: jest.fn(),
     findMany: jest.fn(),
