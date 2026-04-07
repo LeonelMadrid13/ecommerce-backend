@@ -10,6 +10,15 @@ import * as bcrypt from 'bcrypt';
 export class UserService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private readonly userSafeSelect = {
+    id: true,
+    name: true,
+    email: true,
+    role: true,
+    createdAt: true,
+    updatedAt: true,
+  } as const;
+
   async createUser(data: { name: string; email: string; password: string }) {
     const existing = await this.prisma.user.findUnique({
       where: { email: data.email },
@@ -32,19 +41,17 @@ export class UserService {
     return user;
   }
 
-  async findById(id: string) {
-    const userSafeSelect = {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      createdAt: true,
-      updatedAt: true,
-    };
+  async findAll() {
+    return this.prisma.user.findMany({
+      select: this.userSafeSelect,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
 
+  async findById(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
-      select: userSafeSelect,
+      select: this.userSafeSelect,
     });
     if (!user) throw new NotFoundException('User not found');
 

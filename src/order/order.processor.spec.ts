@@ -2,9 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { jest } from '@jest/globals';
 import { OrderProcessor } from './order.processor.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { Logger } from '@nestjs/common';
 
-const mockPrisma = {
+const mockPrisma: any = {
   $transaction: jest.fn(),
   order: {
     findUnique: jest.fn(),
@@ -27,6 +26,12 @@ const makeJob = (overrides = {}) => ({
   ...overrides,
 });
 
+const mockLogger: any = {
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+};
+
 describe('OrderProcessor', () => {
   let processor: OrderProcessor;
 
@@ -35,17 +40,14 @@ describe('OrderProcessor', () => {
       providers: [
         OrderProcessor,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: 'PinoLogger:OrderProcessor', useValue: mockLogger },
       ],
     }).compile();
-
-    jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
-    jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
-    jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 
     processor = module.get<OrderProcessor>(OrderProcessor);
 
     jest.clearAllMocks();
-    mockPrisma.$transaction.mockImplementation((cb) => cb(mockPrisma));
+    mockPrisma.$transaction.mockImplementation((cb: any) => cb(mockPrisma));
   });
 
   it('should be defined', () => {
