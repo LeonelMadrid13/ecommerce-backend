@@ -8,7 +8,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { QUEUES } from '../queue/queue.module.js';
 import { ORDER_JOBS } from '../queue/jobs/order.jobs.js';
 
-const mockPrisma = {
+const mockPrisma: any = {
   order: {
     create: jest.fn(),
     findMany: jest.fn(),
@@ -16,7 +16,7 @@ const mockPrisma = {
   },
 };
 
-const mockQueue = {
+const mockQueue: any = {
   add: jest.fn(),
 };
 
