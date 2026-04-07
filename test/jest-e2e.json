@@ -3,7 +3,22 @@
   "rootDir": ".",
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
+  "extensionsToTreatAsEsm": [".ts"],
   "transform": {
-    "^.+\\.(t|j)s$": "ts-jest"
+    "^.+\\.(t|j)s$": [
+      "ts-jest",
+      {
+        "useESM": true,
+        "tsconfig": {
+          "module": "nodenext",
+          "moduleResolution": "nodenext"
+        }
+      }
+    ]
+  },
+  "moduleNameMapper": {
+    "^(\\.{1,2}/.*)\\.js$": "$1",
+    "^@prisma/client$": "<rootDir>/../src/prisma/__mocks__/prisma.client.mock.ts",
+    "^@prisma/adapter-pg$": "<rootDir>/../src/prisma/__mocks__/prisma.adapter.mock.ts"
   }
 }
