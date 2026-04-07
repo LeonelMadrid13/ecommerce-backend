@@ -1,176 +1,180 @@
-# ECommerce Backend
+# E-Commerce Backend API
 
-> 🚧 **Work in Progress** — Core features are functional and production-ready. Active development ongoing.
+Backend API for an e-commerce system built with NestJS.
 
-A production-oriented REST API built with **NestJS**, **Prisma**, and **PostgreSQL**. The goal is not just CRUD — it's a realistic backend that handles transactional integrity, async processing, and scalable architecture patterns.
-
----
-
-## Stack
-
-- **NestJS** — ESM, NodeNext, strict TypeScript
-- **Prisma ORM** — PostgreSQL
-- **BullMQ + Redis** — async job queue
-- **JWT + Passport** — authentication
-- **pnpm** — package manager
+This project follows the PRD goals: authentication, product management, idempotent order creation, async order processing, and reliability under concurrent requests.
 
 ---
 
-## Architecture Overview
+## 1) Tech Stack
 
-![Architecture diagram](./public/ecommerce_backend_architecture.svg)
-
----
-
-## Architecture
-```
-src/
-├── auth/           # JWT strategy, guards
-├── user/           # User module
-├── product/        # Product CRUD
-├── order/          # Order module + processor
-├── queue/          # BullMQ setup, Redis client
-├── prisma/         # PrismaService (global)
-├── common/
-│   ├── filters/    # Global exception filter
-│   ├── guards/     # IdempotencyGuard
-│   └── interceptors/ # ResponseInterceptor, IdempotencyInterceptor
-└── main.ts
-```
-
-Each domain is isolated into its own module. `PrismaModule` is global. `QueueModule` exports both BullMQ and the Redis client for use across modules.
+- **Node.js + NestJS 11**
+- **TypeScript (ESM / NodeNext)**
+- **Prisma 7 + PostgreSQL**
+- **BullMQ + Redis** (background jobs)
+- **JWT + Passport** (access auth)
+- **Pino** (structured logging)
+- **Swagger** (`/docs`)
 
 ---
 
-## Features
+## 2) What is Implemented
 
 ### Authentication
-- JWT-based auth via `passport-jwt`
-- Token extracted from `Authorization: Bearer <token>`
-- Role support: `USER` / `ADMIN`
+
+- Register user: `POST /auth/register`
+- Login: `POST /auth/login`
+- Refresh token rotation: `POST /auth/refresh`
+- Logout / refresh revocation: `POST /auth/logout`
+
+### Users
+
+- List users (admin): `GET /users`
+- Get user by id (admin): `GET /users/:id`
+- Current profile (JWT required): `GET /users/profile`
 
 ### Products
-- Full CRUD
-- Price and stock validation
+
+- Create (admin): `POST /products`
+- List: `GET /products`
+- Get by id: `GET /products/:id`
+- Update (admin): `PATCH /products/:id`
+- Delete (admin): `DELETE /products/:id`
 
 ### Orders
-- Async order processing via BullMQ
-- Orders are accepted immediately and fulfilled by a background worker
-- Worker runs inside a Prisma transaction: stock validation, optimistic locking, price capture
-- Automatic retries with exponential backoff (3 attempts)
-- Terminal statuses: `CONFIRMED` or `FAILED`
-- Idempotent order creation — duplicate requests return the original response
 
-### API Layer
-- Standardized response envelope: `{ success, data, timestamp }`
-- Centralized exception handling: Prisma errors, HTTP exceptions, unknown errors
-- `ValidationPipe` with whitelist and transform enabled
+- Create order (JWT + Idempotency-Key): `POST /orders`
+- List my orders: `GET /orders`
+- Get my order by id: `GET /orders/:id`
+- Orders are created as `PENDING` and processed asynchronously by BullMQ worker.
 
----
+### Platform / Cross-Cutting
 
-## Order Flow
-```
-POST /orders
-  → JwtAuthGuard        validates token
-  → IdempotencyGuard    checks Redis for duplicate request
-  → OrderService        creates Order (PENDING) + enqueues job
-  → IdempotencyInterceptor  caches response in Redis (24h TTL)
-  → { orderId, status: "PENDING" }
-
-BullMQ Worker
-  → validate stock
-  → decrement stock (optimistic lock)
-  → update priceAtPurchase
-  → Order → CONFIRMED or FAILED
-```
-
-Client polls `GET /orders/:id` for final status.
+- Global validation (`ValidationPipe`)
+- Global response format: `{ success, data, timestamp }`
+- Global exception filter for HTTP and Prisma errors
+- Global rate limiting with custom limits for login/order endpoints
+- Request IDs + structured logs
 
 ---
 
-## Data Model
-```
-User       id · name · email · password · role
-Product    id · name · description? · price · stock
-Order      id · userId · total · status · createdAt · updatedAt
-OrderItem  @@id([orderId, productId]) · quantity · priceAtPurchase
+## 3) Architecture (Modular Monolith)
 
-ORDER_STATUS: PENDING · CONFIRMED · FAILED · CANCELLED
-ROLES:        USER · ADMIN
+```txt
+src/
+├─ auth/      # auth controller/service, jwt strategy
+├─ user/      # user profile + credential validation
+├─ product/   # product CRUD
+├─ order/     # order API + async processor
+├─ queue/     # BullMQ + Redis provider
+├─ prisma/    # Prisma service/module
+└─ common/    # guards, interceptors, filters
 ```
+
+> The codebase is modular and ready to evolve toward microservices later.
 
 ---
 
-## Getting Started
+## 4) Order Processing Flow
 
-### 1. Clone and install
+1. Client sends `POST /orders` with:
+   - `Authorization: Bearer <access_token>`
+   - `Idempotency-Key: <unique-key>`
+2. API stores order with status `PENDING` and enqueues a BullMQ job.
+3. Worker processes job inside DB transaction:
+   - loads order + items
+   - validates products and stock
+   - decrements stock atomically
+   - saves `priceAtPurchase`
+   - updates order status to `CONFIRMED`
+4. If processing fails after retries, order becomes `FAILED`.
+
+Idempotency uses Redis (24h TTL): repeated requests with same key return the cached response instead of creating duplicates.
+
+---
+
+## 5) Data Model (Prisma)
+
+- `User`
+- `Product`
+- `Order`
+- `OrderItem` (composite key: `orderId + productId`)
+- `RefreshToken`
+
+Enums:
+
+- `ROLES`: `USER`, `ADMIN`
+- `ORDER_STATUS`: `PENDING`, `CONFIRMED`, `FAILED`, `CANCELLED`
+
+See: `prisma/schema.prisma`
+
+---
+
+## 6) Local Setup
+
+### Prerequisites
+
+- Node.js 20+
+- pnpm
+- Docker (for Postgres + Redis)
+
+### Install
+
 ```bash
-git clone <your-repo>
-cd ecommerce-backend
 pnpm install
 ```
 
-### 2. Environment variables
+### Environment
+
+Create `.env` with values like:
+
 ```env
-DATABASE_URL="postgresql://postgres:password@localhost:5432/postgres"
-JWT_SECRET="your_secret_key"
+DATABASE_URL="postgresql://postgres:secret@localhost:5432/postgres"
+JWT_SECRET="supersecretkey"
 REDIS_HOST=localhost
 REDIS_PORT=6379
+NODE_ENV=development
 PORT=3000
 ```
 
-### 3. Start Redis
+### Start infra (Postgres + Redis)
+
 ```bash
-docker compose up -d redis
+docker compose up -d
 ```
 
-### 4. Run migrations and seed
+### Migrate + Seed
+
 ```bash
-npx prisma migrate dev
-npx prisma db seed
+pnpm seed
 ```
 
-### 5. Start the server
+### Run API
+
 ```bash
 pnpm start:dev
 ```
 
----
+Swagger UI:
 
-## Roadmap
-
-| Status | Feature |
-|--------|---------|
-| ✅ Done | JWT auth + role support |
-| ✅ Done | Product CRUD + stock validation |
-| ✅ Done | Async order processing (BullMQ) |
-| ✅ Done | Idempotency layer (Redis) |
-| ✅ Done | Optimistic locking + transactions |
-| ✅ Done | Jest test suite |
-| ✅ Done | Rate limiting — brute-force protection |
-| ✅ Done | Refresh tokens — rotation + revocation |
-| ✅ Done | Observability — Pino logging + request tracing |
-| ✅ Done | Swagger — auto-generated API docs |
-| 🔄 In progress | Deployment — AWS / Railway |
+- `http://localhost:3000/docs`
 
 ---
 
-## V2 — Microservices
+## 7) Useful Scripts
 
-The current monolithic architecture is designed with clean module boundaries to support a future migration to microservices.
-
-| Service | Responsibility |
-|---------|---------------|
-| Auth Service | JWT, refresh tokens, session management |
-| User Service | User management, profiles |
-| Product Service | Inventory, pricing, stock |
-| Order Service | Order lifecycle, async processing |
-| Notification Service | Email, webhooks, order status events |
-
-Inter-service communication via message broker (RabbitMQ or Kafka). Each service owns its own database.
+- `pnpm start:dev` → run in watch mode
+- `pnpm build` → build project
+- `pnpm start:prod` → run compiled app
+- `pnpm lint` → lint and autofix
+- `pnpm test` → unit tests
+- `pnpm test:e2e` → e2e tests
+- `pnpm test:cov` → coverage
 
 ---
 
-## Author
+## 8) Diagram
 
-Leonel Madrid
+Architecture diagram:
+
+`public/ecommerce_backend_architecture.svg`

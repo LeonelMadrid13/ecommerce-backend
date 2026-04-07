@@ -4,7 +4,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { UserService } from './user.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
-const mockPrisma = {
+const mockPrisma: any = {
   user: {
     create: jest.fn(),
     findMany: jest.fn(),
@@ -88,6 +88,38 @@ describe('UserService', () => {
         'password',
       );
       expect(result).toBeNull();
+    });
+  });
+
+  describe('findAll', () => {
+    it('should return users with safe select and ordering', async () => {
+      const users = [
+        {
+          id: 'uuid-1',
+          name: 'Admin',
+          email: 'admin@example.com',
+          role: 'ADMIN',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ];
+
+      mockPrisma.user.findMany.mockResolvedValue(users);
+
+      const result = await service.findAll();
+
+      expect(mockPrisma.user.findMany).toHaveBeenCalledWith({
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      expect(result).toEqual(users);
     });
   });
 

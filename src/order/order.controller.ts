@@ -17,7 +17,7 @@ import { OrderService } from './order.service.js';
 import { Throttle } from '@nestjs/throttler';
 
 @ApiTags('orders')
-@Controller('order')
+@Controller('orders')
 export class OrderController {
   constructor(private orderService: OrderService) {}
 
