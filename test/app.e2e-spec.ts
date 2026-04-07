@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import {
+  CanActivate,
   ForbiddenException,
   INestApplication,
   UnauthorizedException,
@@ -16,7 +17,15 @@ import { RolesGuard } from '../src/common/guards/roles.guard.js';
 describe('Authorization E2E (TDD)', () => {
   let app: INestApplication;
 
-  const mockProductService: any = {
+  type ProductServiceMock = {
+    create: jest.Mock<(...args: any[]) => any>;
+    findAll: jest.Mock<(...args: any[]) => any>;
+    findOne: jest.Mock<(...args: any[]) => any>;
+    update: jest.Mock<(...args: any[]) => any>;
+    remove: jest.Mock<(...args: any[]) => any>;
+  };
+
+  const mockProductService: ProductServiceMock = {
     create: jest.fn(),
     findAll: jest.fn(),
     findOne: jest.fn(),
@@ -24,12 +33,15 @@ describe('Authorization E2E (TDD)', () => {
     remove: jest.fn(),
   };
 
-  const mockJwtAuthGuard: any = {
-    canActivate: jest.fn(),
+  const jwtCanActivate = jest.fn();
+  const rolesCanActivate = jest.fn();
+
+  const mockJwtAuthGuard: Pick<CanActivate, 'canActivate'> = {
+    canActivate: jwtCanActivate as CanActivate['canActivate'],
   };
 
-  const mockRolesGuard: any = {
-    canActivate: jest.fn(),
+  const mockRolesGuard: Pick<CanActivate, 'canActivate'> = {
+    canActivate: rolesCanActivate as CanActivate['canActivate'],
   };
 
   beforeAll(async () => {
@@ -63,8 +75,8 @@ describe('Authorization E2E (TDD)', () => {
   });
 
   it('admin can create products', async () => {
-    mockJwtAuthGuard.canActivate.mockReturnValue(true);
-    mockRolesGuard.canActivate.mockReturnValue(true);
+    jwtCanActivate.mockReturnValue(true);
+    rolesCanActivate.mockReturnValue(true);
     mockProductService.create.mockResolvedValue({
       id: 'product-1',
       name: 'Laptop',
@@ -72,13 +84,16 @@ describe('Authorization E2E (TDD)', () => {
       stock: 10,
     });
 
-    await request(app.getHttpServer())
+    const server = app.getHttpServer() as Parameters<typeof request>[0];
+
+    await request(server)
       .post('/products')
       .send({ name: 'Laptop', price: 1500, stock: 10 })
       .expect(201)
       .expect(({ body }) => {
-        expect(body.id).toBe('product-1');
-        expect(body.name).toBe('Laptop');
+        expect(body).toEqual(
+          expect.objectContaining({ id: 'product-1', name: 'Laptop' }),
+        );
       });
 
     expect(mockProductService.create).toHaveBeenCalledWith({
@@ -89,12 +104,14 @@ describe('Authorization E2E (TDD)', () => {
   });
 
   it('non-admin cannot create products', async () => {
-    mockJwtAuthGuard.canActivate.mockReturnValue(true);
-    mockRolesGuard.canActivate.mockImplementation(() => {
+    jwtCanActivate.mockReturnValue(true);
+    rolesCanActivate.mockImplementation(() => {
       throw new ForbiddenException('Forbidden resource');
     });
 
-    await request(app.getHttpServer())
+    const server = app.getHttpServer() as Parameters<typeof request>[0];
+
+    await request(server)
       .post('/products')
       .send({ name: 'Mouse', price: 50, stock: 5 })
       .expect(403);
@@ -103,11 +120,13 @@ describe('Authorization E2E (TDD)', () => {
   });
 
   it('protected routes reject unauthorized users', async () => {
-    mockJwtAuthGuard.canActivate.mockImplementation(() => {
+    jwtCanActivate.mockImplementation(() => {
       throw new UnauthorizedException();
     });
 
-    await request(app.getHttpServer())
+    const server = app.getHttpServer() as Parameters<typeof request>[0];
+
+    await request(server)
       .post('/products')
       .send({ name: 'Keyboard', price: 120, stock: 8 })
       .expect(401);
