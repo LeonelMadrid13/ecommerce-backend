@@ -2,8 +2,8 @@ import {
   Controller,
   Post,
   Body,
-  UnauthorizedException,
   HttpCode,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { AuthService } from './auth.service.js';
@@ -11,6 +11,7 @@ import { UserService } from '../user/user.service.js';
 import { CreateUserDto } from '../user/dto/create-user.dto.js';
 import { LoginDto } from '../user/dto/login.dto.js';
 import { Throttle } from '@nestjs/throttler';
+import { RefreshTokenDto } from './dto/refresh-token.dto.js';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -44,23 +45,17 @@ export class AuthController {
   @ApiOperation({ summary: 'Refresh access token' })
   @Post('refresh')
   @HttpCode(200)
-  async refresh(@Body() body: { refresh_token: string }) {
-    if (!body.refresh_token) {
-      throw new UnauthorizedException('Refresh token is required');
-    }
-
-    return this.authService.refresh(body.refresh_token);
+  @Throttle({ global: { ttl: 60000, limit: 10 } })
+  async refresh(@Body() dto: RefreshTokenDto) {
+    return this.authService.refresh(dto.refresh_token);
   }
 
   @ApiOperation({ summary: 'Logout and revoke refresh token' })
   @Post('logout')
   @HttpCode(200)
-  async logout(@Body() body: { refresh_token: string }) {
-    if (!body.refresh_token) {
-      throw new UnauthorizedException('Refresh token is required');
-    }
-
-    await this.authService.logout(body.refresh_token);
+  @Throttle({ global: { ttl: 60000, limit: 20 } })
+  async logout(@Body() dto: RefreshTokenDto) {
+    await this.authService.logout(dto.refresh_token);
     return { message: 'Logged out successfully' };
   }
 }
