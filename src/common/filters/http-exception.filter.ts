@@ -4,11 +4,14 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(GlobalExceptionFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse();
@@ -55,12 +58,11 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       }
     }
 
-    // Logging
-    console.error({
-      message: exception instanceof Error ? exception.message : exception,
-      stack: exception instanceof Error ? exception.stack : null,
+    this.logger.error({
       path: request.url,
-      timestamp: new Date().toISOString(),
+      statusCode: status,
+      error,
+      message: exception instanceof Error ? exception.message : 'Unknown error',
     });
 
     response.status(status).json({
