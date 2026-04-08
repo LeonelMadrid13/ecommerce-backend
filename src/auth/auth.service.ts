@@ -20,8 +20,12 @@ export class AuthService {
   }
 
   async refresh(token: string) {
-    const stored = await this.prisma.refreshToken.findUnique({
-      where: { token },
+    const hashedToken = this.hashRefreshToken(token);
+
+    const stored = await this.prisma.refreshToken.findFirst({
+      where: {
+        OR: [{ token: hashedToken }, { token }],
+      },
       include: { user: true },
     });
 
@@ -47,8 +51,12 @@ export class AuthService {
   }
 
   async logout(token: string) {
+    const hashedToken = this.hashRefreshToken(token);
+
     await this.prisma.refreshToken.updateMany({
-      where: { token },
+      where: {
+        OR: [{ token: hashedToken }, { token }],
+      },
       data: { revoked: true },
     });
   }
@@ -62,13 +70,18 @@ export class AuthService {
 
   private async generateRefreshToken(userId: string) {
     const token = crypto.randomBytes(64).toString('hex');
+    const tokenHash = this.hashRefreshToken(token);
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
     await this.prisma.refreshToken.create({
-      data: { token, userId, expiresAt },
+      data: { token: tokenHash, userId, expiresAt },
     });
 
     return token;
+  }
+
+  private hashRefreshToken(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex');
   }
 }

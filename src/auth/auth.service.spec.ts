@@ -11,6 +11,7 @@ const mockPrisma: any = {
     create: jest.fn(),
     findMany: jest.fn(),
     findUnique: jest.fn(),
+    findFirst: jest.fn(),
     updateMany: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
@@ -61,7 +62,7 @@ describe('AuthService', () => {
 
   describe('refresh', () => {
     it('should refresh tokens with valid token', async () => {
-      mockPrisma.refreshToken.findUnique.mockResolvedValue({
+      mockPrisma.refreshToken.findFirst.mockResolvedValue({
         id: 'token-id',
         revoked: false,
         expiresAt: new Date(Date.now() + 100000),
@@ -80,7 +81,7 @@ describe('AuthService', () => {
       });
     });
     it('should throw UnauthorizedException for invalid token', async () => {
-      mockPrisma.refreshToken.findUnique.mockResolvedValue(null);
+      mockPrisma.refreshToken.findFirst.mockResolvedValue(null);
 
       await expect(service.refresh('invalid-refresh-token')).rejects.toThrow(
         'Invalid or expired refresh token',
@@ -88,7 +89,7 @@ describe('AuthService', () => {
     });
 
     it('should throw UnauthorizedException for expired token', async () => {
-      mockPrisma.refreshToken.findUnique.mockResolvedValue({
+      mockPrisma.refreshToken.findFirst.mockResolvedValue({
         expiresAt: new Date(Date.now() - 1000), // expired
       });
       await expect(service.refresh('expired-refresh-token')).rejects.toThrow(
@@ -97,7 +98,7 @@ describe('AuthService', () => {
     });
 
     it('should throw UnauthorizedException for revoked token', async () => {
-      mockPrisma.refreshToken.findUnique.mockResolvedValue({
+      mockPrisma.refreshToken.findFirst.mockResolvedValue({
         revoked: true,
       });
       await expect(service.refresh('revoked-refresh-token')).rejects.toThrow(
@@ -111,7 +112,12 @@ describe('AuthService', () => {
       mockPrisma.refreshToken.updateMany.mockResolvedValue({});
       await service.logout('refresh-token-to-revoke');
       expect(mockPrisma.refreshToken.updateMany).toHaveBeenCalledWith({
-        where: { token: 'refresh-token-to-revoke' },
+        where: {
+          OR: [
+            { token: expect.any(String) },
+            { token: 'refresh-token-to-revoke' },
+          ],
+        },
         data: { revoked: true },
       });
     });
