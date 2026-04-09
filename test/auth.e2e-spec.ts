@@ -14,13 +14,24 @@ import { UserService } from '../src/user/user.service.js';
 describe('Auth E2E', () => {
   let app: INestApplication;
 
-  const mockAuthService: any = {
+  type AuthServiceMock = {
+    login: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+    refresh: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+    logout: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+  };
+
+  type UserServiceMock = {
+    createUser: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+    validateUser: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+  };
+
+  const mockAuthService: AuthServiceMock = {
     login: jest.fn(),
     refresh: jest.fn(),
     logout: jest.fn(),
   };
 
-  const mockUserService: any = {
+  const mockUserService: UserServiceMock = {
     createUser: jest.fn(),
     validateUser: jest.fn(),
   };
@@ -64,7 +75,9 @@ describe('Auth E2E', () => {
       refresh_token: 'refresh-token',
     });
 
-    await request(app.getHttpServer())
+    const server = app.getHttpServer() as Parameters<typeof request>[0];
+
+    await request(server)
       .post('/auth/login')
       .send({ email: 'user@example.com', password: 'password123' })
       .expect(200)
@@ -79,7 +92,9 @@ describe('Auth E2E', () => {
   it('POST /auth/login should fail with invalid credentials', async () => {
     mockUserService.validateUser.mockResolvedValue(null);
 
-    await request(app.getHttpServer())
+    const server = app.getHttpServer() as Parameters<typeof request>[0];
+
+    await request(server)
       .post('/auth/login')
       .send({ email: 'bad@example.com', password: 'wrong-password' })
       .expect(401);
@@ -91,7 +106,9 @@ describe('Auth E2E', () => {
       refresh_token: 'new-refresh-token',
     });
 
-    await request(app.getHttpServer())
+    const server = app.getHttpServer() as Parameters<typeof request>[0];
+
+    await request(server)
       .post('/auth/refresh')
       .send({ refresh_token: 'valid-token' })
       .expect(200);
@@ -102,7 +119,9 @@ describe('Auth E2E', () => {
       new UnauthorizedException('Invalid or expired refresh token'),
     );
 
-    await request(app.getHttpServer())
+    const server = app.getHttpServer() as Parameters<typeof request>[0];
+
+    await request(server)
       .post('/auth/refresh')
       .send({ refresh_token: 'revoked-token' })
       .expect(401);

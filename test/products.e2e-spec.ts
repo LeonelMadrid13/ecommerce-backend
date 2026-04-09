@@ -16,11 +16,11 @@ describe('Products E2E', () => {
   let app: INestApplication;
 
   type ProductServiceMock = {
-    create: jest.Mock<(...args: any[]) => any>;
-    findAll: jest.Mock<(...args: any[]) => any>;
-    findOne: jest.Mock<(...args: any[]) => any>;
-    update: jest.Mock<(...args: any[]) => any>;
-    remove: jest.Mock<(...args: any[]) => any>;
+    create: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+    findAll: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+    findOne: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+    update: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+    remove: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
   };
 
   const mockProductService: ProductServiceMock = {
@@ -79,14 +79,18 @@ describe('Products E2E', () => {
       stock: 10,
     });
 
-    await request(app.getHttpServer())
+    const server = app.getHttpServer() as Parameters<typeof request>[0];
+
+    await request(server)
       .post('/products')
       .send({ name: 'Laptop', price: 1500, stock: 10 })
       .expect(201);
   });
 
   it('create product (invalid input)', async () => {
-    await request(app.getHttpServer())
+    const server = app.getHttpServer() as Parameters<typeof request>[0];
+
+    await request(server)
       .post('/products')
       .send({ name: 'Laptop', price: 'bad-price', stock: -3 })
       .expect(400);
@@ -97,7 +101,9 @@ describe('Products E2E', () => {
       new ConflictException('Version conflict'),
     );
 
-    await request(app.getHttpServer())
+    const server = app.getHttpServer() as Parameters<typeof request>[0];
+
+    await request(server)
       .patch('/products/product-1')
       .send({ price: 1600 })
       .expect(409);
@@ -109,6 +115,8 @@ describe('Products E2E', () => {
       { id: 'p2', name: 'Mouse', price: 50, stock: 100 },
     ]);
 
-    await request(app.getHttpServer()).get('/products').expect(200);
+    const server = app.getHttpServer() as Parameters<typeof request>[0];
+
+    await request(server).get('/products').expect(200);
   });
 });
