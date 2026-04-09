@@ -2,6 +2,7 @@ import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
 import { ROLES_KEY } from '../decorators/roles.decorator.js';
+import type { AuthenticatedRequest } from '../types/authenticated-request.type.js';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -17,8 +18,8 @@ export class RolesGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest();
-    const user = request.user as { role?: string } | undefined;
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
+    const user = request.user;
 
     return requiredRoles.includes(user?.role ?? '');
   }

@@ -15,6 +15,7 @@ import { CreateOrderDto } from './dto/create-order.dto.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { OrderService } from './order.service.js';
 import { Throttle } from '@nestjs/throttler';
+import type { AuthenticatedRequest } from '../common/types/authenticated-request.type.js';
 
 @ApiTags('orders')
 @Controller('orders')
@@ -27,7 +28,7 @@ export class OrderController {
   @UseGuards(JwtAuthGuard, IdempotencyGuard)
   @UseInterceptors(IdempotencyInterceptor)
   @Throttle({ global: { ttl: 60000, limit: 20 } })
-  create(@Req() req, @Body() dto: CreateOrderDto) {
+  create(@Req() req: AuthenticatedRequest, @Body() dto: CreateOrderDto) {
     const userId = req.user.id;
     return this.orderService.create(userId, dto);
   }
@@ -36,7 +37,7 @@ export class OrderController {
   @ApiBearerAuth()
   @Get()
   @UseGuards(JwtAuthGuard)
-  findAll(@Req() req) {
+  findAll(@Req() req: AuthenticatedRequest) {
     const userId = req.user.id;
     return this.orderService.findAll(userId);
   }
@@ -45,7 +46,7 @@ export class OrderController {
   @ApiBearerAuth()
   @Get(':id')
   @UseGuards(JwtAuthGuard)
-  findOrderById(@Param('id') id: string, @Req() req) {
+  findOrderById(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     const userId = req.user.id;
     return this.orderService.findById(userId, id);
   }
