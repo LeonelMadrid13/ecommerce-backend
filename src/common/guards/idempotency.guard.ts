@@ -6,11 +6,10 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { Redis } from 'ioredis';
-import { Request, Response } from 'express';
+import type { Response } from 'express';
 
 import { REDIS_CLIENT } from '../../queue/queue.module.js';
-
-const IDEMPOTENCY_TTL_SECONDS = 86400; // 24 hours
+import type { AuthenticatedRequest } from '../types/authenticated-request.type.js';
 
 @Injectable()
 export class IdempotencyGuard implements CanActivate {
@@ -18,7 +17,7 @@ export class IdempotencyGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const http = context.switchToHttp();
-    const req = http.getRequest<Request>();
+    const req = http.getRequest<AuthenticatedRequest>();
     const res = http.getResponse<Response>();
 
     const key = req.headers['idempotency-key'];
@@ -37,7 +36,7 @@ export class IdempotencyGuard implements CanActivate {
     }
 
     // Attach key to request so the controller can store the result after processing
-    (req as any).idempotencyKey = redisKey;
+    req.idempotencyKey = redisKey;
 
     return true;
   }
