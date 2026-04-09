@@ -4,7 +4,7 @@ import { Redis } from 'ioredis';
 import { jest } from '@jest/globals';
 import { of } from 'rxjs';
 
-const setMock = jest.fn();
+const setMock = jest.fn<(...args: unknown[]) => Promise<'OK'>>();
 
 const mockRedis = {
   set: setMock,
@@ -34,6 +34,7 @@ describe('IdempotencyInterceptor', () => {
   beforeEach(() => {
     interceptor = new IdempotencyInterceptor(mockRedis);
     jest.clearAllMocks();
+    setMock.mockResolvedValue('OK');
   });
 
   it('does not cache when idempotencyKey is not present in request', (done) => {
