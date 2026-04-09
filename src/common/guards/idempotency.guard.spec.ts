@@ -1,9 +1,10 @@
 import { ExecutionContext, BadRequestException } from '@nestjs/common';
 import { IdempotencyGuard } from './idempotency.guard.js';
 import { jest } from '@jest/globals';
+import type { Redis } from 'ioredis';
 
-const mockRedis: any = {
-  get: jest.fn(),
+const mockRedis = {
+  get: jest.fn<(key: string) => Promise<string | null>>(),
 };
 
 const createMockContext = (
@@ -32,7 +33,7 @@ describe('IdempotencyGuard', () => {
   let guard: IdempotencyGuard;
 
   beforeEach(() => {
-    guard = new IdempotencyGuard(mockRedis);
+    guard = new IdempotencyGuard(mockRedis as unknown as Redis);
     jest.clearAllMocks();
   });
 
@@ -46,7 +47,7 @@ describe('IdempotencyGuard', () => {
 
   it('returns cached response and short-circuits when key exists in Redis', async () => {
     const cachedPayload = { success: true, data: { orderId: 'abc' } };
-    (mockRedis.get as any).mockResolvedValueOnce(JSON.stringify(cachedPayload));
+    mockRedis.get.mockResolvedValueOnce(JSON.stringify(cachedPayload));
 
     const { context, res } = createMockContext({
       'idempotency-key': 'test-key-123',
@@ -60,7 +61,7 @@ describe('IdempotencyGuard', () => {
   });
 
   it('attaches idempotencyKey to request and returns true when no cache exists', async () => {
-    (mockRedis.get as any).mockResolvedValueOnce(null);
+    mockRedis.get.mockResolvedValueOnce(null);
 
     const { context, req } = createMockContext({
       'idempotency-key': 'test-key-123',
