@@ -23,6 +23,7 @@ const createMockHost = (url = '/test') => {
 };
 
 const createPrismaError = (code: string) => {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
   return new Prisma.PrismaClientKnownRequestError('error', {
     code,
     clientVersion: '5.0.0',
@@ -34,7 +35,6 @@ describe('GlobalExceptionFilter', () => {
 
   beforeEach(() => {
     filter = new GlobalExceptionFilter();
-    jest.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   afterEach(() => {

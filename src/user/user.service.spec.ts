@@ -4,7 +4,15 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { UserService } from './user.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
-const mockPrisma: any = {
+type UserRepoMock = {
+  create: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+  findMany: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+  findUnique: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+  update: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+  delete: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+};
+
+const mockPrisma: { user: UserRepoMock } = {
   user: {
     create: jest.fn(),
     findMany: jest.fn(),
@@ -69,13 +77,20 @@ describe('UserService', () => {
         password: 'password123',
       });
 
-      expect(mockPrisma.user.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          email: 'test@example.com',
-          name: 'Test',
-          password: expect.any(String),
-        }),
-      });
+      const createArgs = mockPrisma.user.create.mock.calls[0]?.[0] as
+        | {
+            data: {
+              email: string;
+              name: string;
+              password: string;
+            };
+          }
+        | undefined;
+
+      expect(createArgs).toBeDefined();
+      expect(createArgs?.data.email).toBe('test@example.com');
+      expect(createArgs?.data.name).toBe('Test');
+      expect(typeof createArgs?.data.password).toBe('string');
       expect(result).toBeDefined();
     });
   });

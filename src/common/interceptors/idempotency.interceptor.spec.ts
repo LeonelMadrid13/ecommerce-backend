@@ -4,8 +4,10 @@ import { Redis } from 'ioredis';
 import { jest } from '@jest/globals';
 import { of } from 'rxjs';
 
+const setMock = jest.fn<(...args: unknown[]) => Promise<'OK'>>();
+
 const mockRedis = {
-  set: jest.fn(),
+  set: setMock,
 } as unknown as Redis;
 
 const createMockContext = (idempotencyKey?: string) => {
@@ -32,6 +34,7 @@ describe('IdempotencyInterceptor', () => {
   beforeEach(() => {
     interceptor = new IdempotencyInterceptor(mockRedis);
     jest.clearAllMocks();
+    setMock.mockResolvedValue('OK');
   });
 
   it('does not cache when idempotencyKey is not present in request', (done) => {
@@ -40,7 +43,7 @@ describe('IdempotencyInterceptor', () => {
 
     interceptor.intercept(context, handler).subscribe({
       next: () => {
-        expect(mockRedis.set).not.toHaveBeenCalled();
+        expect(setMock).not.toHaveBeenCalled();
         done();
       },
     });
@@ -55,7 +58,7 @@ describe('IdempotencyInterceptor', () => {
       next: () => {
         // tap is async, give it a tick to resolve
         setImmediate(() => {
-          expect(mockRedis.set).toHaveBeenCalledWith(
+          expect(setMock).toHaveBeenCalledWith(
             'idempotency:test-key-123',
             JSON.stringify(responseData),
             'EX',

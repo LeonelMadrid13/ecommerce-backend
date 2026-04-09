@@ -8,7 +8,17 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { QUEUES } from '../queue/queue.module.js';
 import { ORDER_JOBS } from '../queue/jobs/order.jobs.js';
 
-const mockPrisma: any = {
+type OrderRepoMock = {
+  create: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+  findMany: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+  findFirst: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+};
+
+type QueueMock = {
+  add: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+};
+
+const mockPrisma: { order: OrderRepoMock } = {
   order: {
     create: jest.fn(),
     findMany: jest.fn(),
@@ -16,7 +26,7 @@ const mockPrisma: any = {
   },
 };
 
-const mockQueue: any = {
+const mockQueue: QueueMock = {
   add: jest.fn(),
 };
 
@@ -75,13 +85,14 @@ describe('OrderService', () => {
         status: 'PENDING',
       });
 
-      expect(mockPrisma.order.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          userId,
-          total: 0,
-          status: 'PENDING',
-        }),
-      });
+      const createArgs = mockPrisma.order.create.mock.calls[0]?.[0] as
+        | { data: { userId: string; total: number; status: string } }
+        | undefined;
+
+      expect(createArgs).toBeDefined();
+      expect(createArgs?.data.userId).toBe(userId);
+      expect(createArgs?.data.total).toBe(0);
+      expect(createArgs?.data.status).toBe('PENDING');
 
       expect(mockQueue.add).toHaveBeenCalledWith(
         ORDER_JOBS.PROCESS,
@@ -110,17 +121,25 @@ describe('OrderService', () => {
 
       await service.create(userId, dto);
 
-      expect(mockPrisma.order.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          orderItems: {
-            createMany: {
-              data: [
-                { productId: 'product-uuid', quantity: 3, priceAtPurchase: 0 },
-              ],
-            },
-          },
-        }),
-      });
+      const createArgs = mockPrisma.order.create.mock.calls[0]?.[0] as
+        | {
+            data: {
+              orderItems: {
+                createMany: {
+                  data: Array<{
+                    productId: string;
+                    quantity: number;
+                    priceAtPurchase: number;
+                  }>;
+                };
+              };
+            };
+          }
+        | undefined;
+
+      expect(createArgs?.data.orderItems.createMany.data).toEqual([
+        { productId: 'product-uuid', quantity: 3, priceAtPurchase: 0 },
+      ]);
     });
   });
 

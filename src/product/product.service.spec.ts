@@ -4,7 +4,15 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ProductService } from './product.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
-const mockPrisma: any = {
+type ProductRepoMock = {
+  create: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+  findMany: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+  findUnique: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+  update: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+  delete: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+};
+
+const mockPrisma: { product: ProductRepoMock } = {
   product: {
     create: jest.fn(),
     findMany: jest.fn(),

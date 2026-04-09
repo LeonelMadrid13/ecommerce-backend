@@ -6,11 +6,20 @@ import {
 } from '@nestjs/common';
 import { Observable, map } from 'rxjs';
 
+type ApiSuccessResponse<T> = {
+  success: true;
+  data: T;
+  timestamp: string;
+};
+
 @Injectable()
 export class ResponseInterceptor implements NestInterceptor {
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+  intercept<T>(
+    context: ExecutionContext,
+    next: CallHandler<T>,
+  ): Observable<ApiSuccessResponse<T>> {
     return next.handle().pipe(
-      map((data) => ({
+      map((data: T) => ({
         success: true,
         data,
         timestamp: new Date().toISOString(),

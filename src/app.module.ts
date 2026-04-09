@@ -3,6 +3,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { APP_GUARD } from '@nestjs/core';
 import { Module } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import type { IncomingMessage, ServerResponse } from 'http';
 
 import { AppController } from './app.controller.js';
 import { ConfigModule } from '@nestjs/config';
@@ -32,13 +33,13 @@ import { QueueModule } from './queue/queue.module.js';
             : undefined,
         customProps: () => ({ context: 'HTTP' }),
         serializers: {
-          req(req) {
+          req(req: IncomingMessage & { method?: string; url?: string }) {
             return {
               method: req.method,
               url: req.url,
             };
           },
-          res(res) {
+          res(res: ServerResponse & { statusCode?: number }) {
             return {
               statusCode: res.statusCode,
             };

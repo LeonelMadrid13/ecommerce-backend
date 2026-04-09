@@ -6,7 +6,17 @@ import { jest } from '@jest/globals';
 import { AuthService } from './auth.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
-const mockPrisma: any = {
+type RefreshTokenMockRepo = {
+  create: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+  findMany: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+  findUnique: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+  findFirst: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+  updateMany: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+  update: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+  delete: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+};
+
+const mockPrisma: { refreshToken: RefreshTokenMockRepo } = {
   refreshToken: {
     create: jest.fn(),
     findMany: jest.fn(),
@@ -111,15 +121,21 @@ describe('AuthService', () => {
     it('should revoke the refresh token', async () => {
       mockPrisma.refreshToken.updateMany.mockResolvedValue({});
       await service.logout('refresh-token-to-revoke');
-      expect(mockPrisma.refreshToken.updateMany).toHaveBeenCalledWith({
-        where: {
-          OR: [
-            { token: expect.any(String) },
-            { token: 'refresh-token-to-revoke' },
-          ],
-        },
-        data: { revoked: true },
+
+      const firstCallArgs = mockPrisma.refreshToken.updateMany.mock
+        .calls[0]?.[0] as
+        | {
+            where: { OR: Array<{ token: string }> };
+            data: { revoked: boolean };
+          }
+        | undefined;
+
+      expect(firstCallArgs).toBeDefined();
+      expect(firstCallArgs?.data).toEqual({ revoked: true });
+      expect(firstCallArgs?.where.OR[1]).toEqual({
+        token: 'refresh-token-to-revoke',
       });
+      expect(typeof firstCallArgs?.where.OR[0]?.token).toBe('string');
     });
   });
 });

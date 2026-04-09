@@ -7,6 +7,12 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import type { Request, Response } from 'express';
+
+type HttpExceptionResponseBody = {
+  message?: string | string[];
+  error?: string;
+};
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -14,8 +20,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
-    const response = ctx.getResponse();
-    const request = ctx.getRequest();
+    const response = ctx.getResponse<Response>();
+    const request = ctx.getRequest<Request>();
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'Internal server error';
@@ -34,7 +40,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         typeof exceptionResponse === 'object' &&
         exceptionResponse !== null
       ) {
-        const res = exceptionResponse as any;
+        const res = exceptionResponse as HttpExceptionResponseBody;
         message = Array.isArray(res.message)
           ? res.message.join(', ')
           : res.message || message;
@@ -45,8 +51,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       // Prisma errors
       status = HttpStatus.BAD_REQUEST;
       error = 'Database Error';
+      const prismaCode = getPrismaErrorCode(exception);
 
-      switch (exception.code) {
+      switch (prismaCode) {
         case 'P2002':
           message = 'Unique constraint failed';
           break;
@@ -78,4 +85,13 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
 function isPrismaError(e: unknown): e is Prisma.PrismaClientKnownRequestError {
   return e instanceof Prisma.PrismaClientKnownRequestError;
+}
+
+function getPrismaErrorCode(e: unknown): string | undefined {
+  if (typeof e !== 'object' || e === null || !('code' in e)) {
+    return undefined;
+  }
+
+  const code = Reflect.get(e, 'code');
+  return typeof code === 'string' ? code : undefined;
 }

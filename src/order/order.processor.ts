@@ -134,7 +134,8 @@ export class OrderProcessor extends WorkerHost {
           data: { status: 'FAILED' },
         });
 
-        this.logger.error({ orderId, err }, 'Order failed permanently');
+        const errMessage = err instanceof Error ? err.message : 'Unknown error';
+        this.logger.error({ orderId, errMessage }, 'Order failed permanently');
 
         return;
       }
