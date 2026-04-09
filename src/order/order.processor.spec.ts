@@ -1,9 +1,30 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { jest } from '@jest/globals';
+import type { Job } from 'bullmq';
+
 import { OrderProcessor } from './order.processor.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import type { ProcessOrderPayload } from '../queue/jobs/order.jobs.js';
 
-const mockPrisma: any = {
+type TxMock = {
+  order: {
+    findUnique: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+    update: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+  };
+  product: {
+    findMany: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+    updateMany: jest.Mock<(...args: unknown[]) => Promise<{ count: number }>>;
+  };
+  orderItem: {
+    update: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+  };
+};
+
+type PrismaMock = TxMock & {
+  $transaction: jest.Mock<(cb: (tx: TxMock) => Promise<void>) => Promise<void>>;
+};
+
+const mockPrisma: PrismaMock = {
   $transaction: jest.fn(),
   order: {
     findUnique: jest.fn(),
@@ -18,18 +39,21 @@ const mockPrisma: any = {
   },
 };
 
-const makeJob = (overrides = {}) => ({
-  name: 'process-order',
-  data: { orderId: 'order-uuid' },
-  attemptsMade: 0,
-  opts: { attempts: 3 },
-  ...overrides,
-});
+const makeJob = (
+  overrides: Partial<Job<ProcessOrderPayload>> = {},
+): Job<ProcessOrderPayload> =>
+  ({
+    name: 'process-order',
+    data: { orderId: 'order-uuid' },
+    attemptsMade: 0,
+    opts: { attempts: 3 },
+    ...overrides,
+  }) as unknown as Job<ProcessOrderPayload>;
 
-const mockLogger: any = {
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
+const mockLogger = {
+  info: jest.fn<(obj: object, msg?: string) => void>(),
+  warn: jest.fn<(obj: object, msg?: string) => void>(),
+  error: jest.fn<(obj: object, msg?: string) => void>(),
 };
 
 describe('OrderProcessor', () => {
@@ -47,7 +71,7 @@ describe('OrderProcessor', () => {
     processor = module.get<OrderProcessor>(OrderProcessor);
 
     jest.clearAllMocks();
-    mockPrisma.$transaction.mockImplementation((cb: any) => cb(mockPrisma));
+    mockPrisma.$transaction.mockImplementation(async (cb) => cb(mockPrisma));
   });
 
   it('should be defined', () => {
@@ -60,7 +84,7 @@ describe('OrderProcessor', () => {
       mockPrisma.order.update.mockResolvedValue({});
 
       const job = makeJob();
-      await processor.process(job as any);
+      await processor.process(job);
 
       expect(mockPrisma.order.update).toHaveBeenCalledWith({
         where: { id: 'order-uuid' },
@@ -76,7 +100,7 @@ describe('OrderProcessor', () => {
       });
 
       const job = makeJob();
-      await processor.process(job as any);
+      await processor.process(job);
 
       expect(mockPrisma.order.update).not.toHaveBeenCalled();
     });
@@ -92,7 +116,7 @@ describe('OrderProcessor', () => {
     mockPrisma.order.update.mockResolvedValue({});
 
     const job = makeJob();
-    await processor.process(job as any);
+    await processor.process(job);
 
     expect(mockPrisma.order.update).toHaveBeenCalledWith({
       where: { id: 'order-uuid' },
@@ -112,13 +136,8 @@ describe('OrderProcessor', () => {
 
     const job = makeJob();
 
-    try {
-      await processor.process(job as any);
-      fail('should have thrown');
-    } catch (err) {
-      expect((err as Error).message).toContain('Insufficient stock');
-      expect(mockPrisma.order.update).not.toHaveBeenCalled();
-    }
+    await expect(processor.process(job)).rejects.toThrow('Insufficient stock');
+    expect(mockPrisma.order.update).not.toHaveBeenCalled();
   });
 
   it('should throw retryable error if stock changes mid-transaction', async () => {
@@ -134,13 +153,10 @@ describe('OrderProcessor', () => {
 
     const job = makeJob();
 
-    try {
-      await processor.process(job as any);
-      fail('should have thrown');
-    } catch (err) {
-      expect((err as Error).message).toContain('Stock changed mid-transaction');
-      expect(mockPrisma.order.update).not.toHaveBeenCalled();
-    }
+    await expect(processor.process(job)).rejects.toThrow(
+      'Stock changed mid-transaction',
+    );
+    expect(mockPrisma.order.update).not.toHaveBeenCalled();
   });
 
   it('should confirm order and update stock and prices on success', async () => {
@@ -157,7 +173,7 @@ describe('OrderProcessor', () => {
     mockPrisma.order.update.mockResolvedValue({});
 
     const job = makeJob();
-    await processor.process(job as any);
+    await processor.process(job);
 
     expect(mockPrisma.product.updateMany).toHaveBeenCalledWith({
       where: { id: 'product-uuid', stock: { gte: 2 } },
