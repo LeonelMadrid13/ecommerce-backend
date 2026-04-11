@@ -1,6 +1,6 @@
 import { GlobalExceptionFilter } from './http-exception.filter.js';
 import { HttpException, HttpStatus, BadRequestException } from '@nestjs/common';
-import { ArgumentsHost } from '@nestjs/common';
+import { ArgumentsHost, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { jest } from '@jest/globals';
 
@@ -22,12 +22,24 @@ const createMockHost = (url = '/test') => {
   };
 };
 
-const createPrismaError = (code: string) => {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
-  return new Prisma.PrismaClientKnownRequestError('error', {
+const createPrismaError = (code: string, meta?: Record<string, unknown>) => {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+  const error = new Prisma.PrismaClientKnownRequestError('error', {
     code,
     clientVersion: '5.0.0',
+    meta,
   });
+
+  if (meta !== undefined) {
+    Object.defineProperty(error, 'meta', {
+      value: meta,
+      enumerable: true,
+      configurable: true,
+    });
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+  return error;
 };
 
 describe('GlobalExceptionFilter', () => {
@@ -95,6 +107,20 @@ describe('GlobalExceptionFilter', () => {
     expect(json).toHaveBeenCalledWith(
       expect.objectContaining({
         message: 'Record not found',
+      }),
+    );
+  });
+
+  it('logs prisma meta when available', () => {
+    const { host } = createMockHost();
+    const loggerSpy = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    filter.catch(createPrismaError('P2002', { target: ['email'] }), host);
+    expect(loggerSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prismaCode: 'P2002',
+        prismaMeta: { target: ['email'] },
       }),
     );
   });
