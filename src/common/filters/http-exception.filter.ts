@@ -23,6 +23,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
+    let prismaCode: string | undefined;
+    let prismaMeta: unknown;
+
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'Internal server error';
     let error = 'Internal Server Error';
@@ -51,7 +54,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       // Prisma errors
       status = HttpStatus.BAD_REQUEST;
       error = 'Database Error';
-      const prismaCode = getPrismaErrorCode(exception);
+      prismaCode = getPrismaErrorCode(exception);
+      prismaMeta = getPrismaErrorMeta(exception);
 
       switch (prismaCode) {
         case 'P2002':
@@ -68,6 +72,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     this.logger.error({
       path: request.url,
       statusCode: status,
+      prismaCode,
+      prismaMeta,
       error,
       message: exception instanceof Error ? exception.message : 'Unknown error',
     });
@@ -94,4 +100,11 @@ function getPrismaErrorCode(e: unknown): string | undefined {
 
   const code = Reflect.get(e, 'code');
   return typeof code === 'string' ? code : undefined;
+}
+
+function getPrismaErrorMeta(e: unknown): unknown {
+  if (typeof e !== 'object' || e === null || !('meta' in e)) {
+    return undefined;
+  }
+  return Reflect.get(e, 'meta');
 }
