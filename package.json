@@ -23,6 +23,7 @@
     "test:e2e": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config ./test/jest-e2e.json",
     "test:postman": "newman run postman/new-collection.v2.1.json --env-var baseUrl=http://localhost:3000",
     "test:postman:ci": "newman run postman/new-collection.v2.1.json --env-var baseUrl=http://127.0.0.1:3000 --color off",
+    "test:postman:local": "bash ./scripts/test-postman-local.sh",
     "prepare": "husky",
     "typecheck": "tsc --noEmit",
     "lint:check": "eslint \"{src,apps,libs,test}/**/*.ts\"",
