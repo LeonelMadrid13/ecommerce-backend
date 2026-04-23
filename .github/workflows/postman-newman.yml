@@ -1,0 +1,64 @@
+name: Postman + Newman
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+concurrency:
+  group: postman-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  postman:
+    name: Postman Newman suite
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://postgres:secret@127.0.0.1:5432/postgres?schema=public
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: '6379'
+      PORT: '3000'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Start docker compose services
+        run: docker compose up -d --wait
+
+      - name: Generate Prisma client
+        run: pnpm prisma generate
+
+      - name: Deploy Prisma migrations
+        run: pnpm prisma migrate deploy
+
+      - name: Seed database
+        run: pnpm prisma db seed
+
+      - name: Start API
+        run: |
+          pnpm start > api.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3000/docs-json > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat api.log
+          exit 1
+
+      - name: Run Newman suite
+        run: pnpm test:postman:ci
