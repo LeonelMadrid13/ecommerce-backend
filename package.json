@@ -23,7 +23,8 @@
     "test:e2e": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config ./test/jest-e2e.json",
     "prepare": "husky",
     "typecheck": "tsc --noEmit",
-    "lint:check": "eslint \"{src,apps,libs,test}/**/*.ts\""
+    "lint:check": "eslint \"{src,apps,libs,test}/**/*.ts\"",
+    "verify:secure": "pnpm lint:check && pnpm typecheck && pnpm test && pnpm test:e2e && pnpm audit --prod --audit-level high"
   },
   "dependencies": {
     "@nestjs/bullmq": "^11.0.4",
