@@ -13,13 +13,14 @@ async function main() {
   await prisma.orderItem.deleteMany();
   await prisma.order.deleteMany();
   await prisma.product.deleteMany();
+  await prisma.refreshToken.deleteMany();
   await prisma.user.deleteMany();
 
   // 🔐 Hash password
   const password = await bcrypt.hash('password123', 10);
 
   // 👤 Users
-  const user = await prisma.user.create({
+  await prisma.user.create({
     data: {
       name: 'Leonel',
       email: 'leonel@example.com',
@@ -28,7 +29,7 @@ async function main() {
     },
   });
 
-  const admin = await prisma.user.create({
+  await prisma.user.create({
     data: {
       name: 'Admin',
       email: 'admin@example.com',
@@ -40,7 +41,7 @@ async function main() {
   console.log('✅ Users created');
 
   // 📦 Products
-  const products = await prisma.product.createMany({
+  await prisma.product.createMany({
     data: [
       {
         name: 'Laptop',
