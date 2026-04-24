@@ -10,7 +10,9 @@ import { OrderProcessor } from './order.processor.js';
 import { IdempotencyGuard } from '../common/guards/idempotency.guard.js';
 import { IdempotencyInterceptor } from '../common/interceptors/idempotency.interceptor.js';
 import { PrismaOrderRepository } from './infrastructure/prisma-order.repository.js';
+import { PrismaOrderProcessingRepository } from './infrastructure/prisma-order-processing.repository.js';
 import { ORDER_REPOSITORY } from './order.repository.port.js';
+import { ORDER_PROCESSING_REPOSITORY } from './order-processing.repository.port.js';
 
 @Module({
   imports: [
@@ -21,9 +23,14 @@ import { ORDER_REPOSITORY } from './order.repository.port.js';
   providers: [
     OrderService,
     PrismaOrderRepository,
+    PrismaOrderProcessingRepository,
     {
       provide: ORDER_REPOSITORY,
       useClass: PrismaOrderRepository,
+    },
+    {
+      provide: ORDER_PROCESSING_REPOSITORY,
+      useClass: PrismaOrderProcessingRepository,
     },
     OrderProcessor,
     IdempotencyGuard,
