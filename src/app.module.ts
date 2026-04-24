@@ -15,6 +15,7 @@ import { AuthModule } from './auth/auth.module.js';
 import { ProductModule } from './product/product.module.js';
 import { OrderModule } from './order/order.module.js';
 import { QueueModule } from './queue/queue.module.js';
+import { CommonModule } from './common/common.module.js';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { QueueModule } from './queue/queue.module.js';
         },
       ],
     }),
+    CommonModule,
     UserModule,
     PrismaModule,
     AuthModule,
