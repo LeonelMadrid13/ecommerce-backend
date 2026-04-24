@@ -2,19 +2,24 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Inject,
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 
-import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateOrderDto } from './dto/create-order.dto.js';
 import { QUEUES } from '../queue/queue.module.js';
 import { ORDER_JOBS, ProcessOrderPayload } from '../queue/jobs/order.jobs.js';
+import {
+  ORDER_REPOSITORY,
+  type OrderRepositoryPort,
+} from './order.repository.port.js';
 
 @Injectable()
 export class OrderService {
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(ORDER_REPOSITORY)
+    private readonly orderRepository: OrderRepositoryPort,
     @InjectQueue(QUEUES.ORDERS) private readonly ordersQueue: Queue,
   ) {}
 
@@ -25,22 +30,10 @@ export class OrderService {
       throw new BadRequestException('Order must contain at least one item');
     }
 
-    const order = await this.prisma.order.create({
-      data: {
-        userId,
-        total: 0,
-        status: 'PENDING',
-        orderItems: {
-          createMany: {
-            data: mergedItems.map((item) => ({
-              productId: item.productId,
-              quantity: item.quantity,
-              priceAtPurchase: 0,
-            })),
-          },
-        },
-      },
-    });
+    const order = await this.orderRepository.createPendingWithItems(
+      userId,
+      mergedItems,
+    );
 
     await this.ordersQueue.add(
       ORDER_JOBS.PROCESS,
@@ -57,16 +50,11 @@ export class OrderService {
   }
 
   async findAll(userId: string) {
-    return this.prisma.order.findMany({
-      where: { userId },
-    });
+    return this.orderRepository.findAllByUser(userId);
   }
 
   async findById(userId: string, id: string) {
-    const order = await this.prisma.order.findFirst({
-      where: { id, userId },
-      include: { orderItems: true },
-    });
+    const order = await this.orderRepository.findByIdForUser(userId, id);
 
     if (!order) {
       throw new NotFoundException('Order not found');

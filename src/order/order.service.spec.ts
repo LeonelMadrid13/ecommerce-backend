@@ -4,26 +4,24 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { getQueueToken } from '@nestjs/bullmq';
 
 import { OrderService } from './order.service.js';
-import { PrismaService } from '../prisma/prisma.service.js';
 import { QUEUES } from '../queue/queue.module.js';
 import { ORDER_JOBS } from '../queue/jobs/order.jobs.js';
+import { ORDER_REPOSITORY } from './order.repository.port.js';
 
-type OrderRepoMock = {
-  create: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
-  findMany: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
-  findFirst: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+type OrderRepositoryMock = {
+  createPendingWithItems: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+  findAllByUser: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+  findByIdForUser: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
 };
 
 type QueueMock = {
   add: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
 };
 
-const mockPrisma: { order: OrderRepoMock } = {
-  order: {
-    create: jest.fn(),
-    findMany: jest.fn(),
-    findFirst: jest.fn(),
-  },
+const mockOrderRepository: OrderRepositoryMock = {
+  createPendingWithItems: jest.fn(),
+  findAllByUser: jest.fn(),
+  findByIdForUser: jest.fn(),
 };
 
 const mockQueue: QueueMock = {
@@ -37,7 +35,7 @@ describe('OrderService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         OrderService,
-        { provide: PrismaService, useValue: mockPrisma },
+        { provide: ORDER_REPOSITORY, useValue: mockOrderRepository },
         { provide: getQueueToken(QUEUES.ORDERS), useValue: mockQueue },
       ],
     }).compile();
@@ -75,7 +73,9 @@ describe('OrderService', () => {
         status: 'PENDING',
       };
 
-      mockPrisma.order.create.mockResolvedValue(createdOrder);
+      mockOrderRepository.createPendingWithItems.mockResolvedValue(
+        createdOrder,
+      );
       mockQueue.add.mockResolvedValue(undefined);
 
       const result = await service.create(userId, dto);
@@ -85,14 +85,10 @@ describe('OrderService', () => {
         status: 'PENDING',
       });
 
-      const createArgs = mockPrisma.order.create.mock.calls[0]?.[0] as
-        | { data: { userId: string; total: number; status: string } }
-        | undefined;
-
+      const createArgs =
+        mockOrderRepository.createPendingWithItems.mock.calls[0];
       expect(createArgs).toBeDefined();
-      expect(createArgs?.data.userId).toBe(userId);
-      expect(createArgs?.data.total).toBe(0);
-      expect(createArgs?.data.status).toBe('PENDING');
+      expect(createArgs?.[0]).toBe(userId);
 
       expect(mockQueue.add).toHaveBeenCalledWith(
         ORDER_JOBS.PROCESS,
@@ -116,30 +112,19 @@ describe('OrderService', () => {
         status: 'PENDING',
       };
 
-      mockPrisma.order.create.mockResolvedValue(createdOrder);
+      mockOrderRepository.createPendingWithItems.mockResolvedValue(
+        createdOrder,
+      );
       mockQueue.add.mockResolvedValue(undefined);
 
       await service.create(userId, dto);
 
-      const createArgs = mockPrisma.order.create.mock.calls[0]?.[0] as
-        | {
-            data: {
-              orderItems: {
-                createMany: {
-                  data: Array<{
-                    productId: string;
-                    quantity: number;
-                    priceAtPurchase: number;
-                  }>;
-                };
-              };
-            };
-          }
+      const itemsArg = mockOrderRepository.createPendingWithItems.mock
+        .calls[0]?.[1] as
+        | Array<{ productId: string; quantity: number }>
         | undefined;
 
-      expect(createArgs?.data.orderItems.createMany.data).toEqual([
-        { productId: 'product-uuid', quantity: 3, priceAtPurchase: 0 },
-      ]);
+      expect(itemsArg).toEqual([{ productId: 'product-uuid', quantity: 3 }]);
     });
   });
 
@@ -149,13 +134,13 @@ describe('OrderService', () => {
         { id: 'order-uuid', userId: 'user-uuid', total: 0, status: 'PENDING' },
       ];
 
-      mockPrisma.order.findMany.mockResolvedValue(orders);
+      mockOrderRepository.findAllByUser.mockResolvedValue(orders);
 
       const result = await service.findAll('user-uuid');
 
-      expect(mockPrisma.order.findMany).toHaveBeenCalledWith({
-        where: { userId: 'user-uuid' },
-      });
+      expect(mockOrderRepository.findAllByUser).toHaveBeenCalledWith(
+        'user-uuid',
+      );
       expect(result).toEqual(orders);
     });
   });
@@ -170,19 +155,19 @@ describe('OrderService', () => {
         orderItems: [],
       };
 
-      mockPrisma.order.findFirst.mockResolvedValue(order);
+      mockOrderRepository.findByIdForUser.mockResolvedValue(order);
 
       const result = await service.findById('user-uuid', 'order-uuid');
 
-      expect(mockPrisma.order.findFirst).toHaveBeenCalledWith({
-        where: { id: 'order-uuid', userId: 'user-uuid' },
-        include: { orderItems: true },
-      });
+      expect(mockOrderRepository.findByIdForUser).toHaveBeenCalledWith(
+        'user-uuid',
+        'order-uuid',
+      );
       expect(result).toEqual(order);
     });
 
     it('should throw NotFoundException if order does not exist', async () => {
-      mockPrisma.order.findFirst.mockResolvedValue(null);
+      mockOrderRepository.findByIdForUser.mockResolvedValue(null);
 
       try {
         await service.findById('user-uuid', 'non-existent');

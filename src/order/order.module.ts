@@ -9,6 +9,8 @@ import { OrderController } from './order.controller.js';
 import { OrderProcessor } from './order.processor.js';
 import { IdempotencyGuard } from '../common/guards/idempotency.guard.js';
 import { IdempotencyInterceptor } from '../common/interceptors/idempotency.interceptor.js';
+import { PrismaOrderRepository } from './infrastructure/prisma-order.repository.js';
+import { ORDER_REPOSITORY } from './order.repository.port.js';
 
 @Module({
   imports: [
@@ -18,6 +20,11 @@ import { IdempotencyInterceptor } from '../common/interceptors/idempotency.inter
   ],
   providers: [
     OrderService,
+    PrismaOrderRepository,
+    {
+      provide: ORDER_REPOSITORY,
+      useClass: PrismaOrderRepository,
+    },
     OrderProcessor,
     IdempotencyGuard,
     IdempotencyInterceptor,
