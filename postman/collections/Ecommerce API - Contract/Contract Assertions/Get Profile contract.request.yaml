@@ -1,0 +1,21 @@
+$kind: http-request
+url: '{{baseUrl}}/users/profile'
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: '{{userAccessToken}}'
+scripts:
+  - type: afterResponse
+    code: |-
+      const body = pm.response.json();
+      pm.test('status is 200', function () { pm.response.to.have.status(200); });
+      pm.test('profile contract shape', function () {
+        pm.expect(body.success).to.eql(true);
+        pm.expect(body.data).to.have.property('id');
+        pm.expect(body.data).to.have.property('email');
+        pm.expect(body.data).to.have.property('role');
+        pm.expect(body.timestamp).to.be.a('string');
+      });
+    language: text/javascript
+order: 1000

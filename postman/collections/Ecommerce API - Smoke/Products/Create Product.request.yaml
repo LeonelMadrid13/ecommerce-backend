@@ -1,0 +1,19 @@
+$kind: http-request
+url: '{{baseUrl}}/products'
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: '{"name":"Postman Smoke Laptop","description":"Created by smoke suite","price":1499.99,"stock":12}'
+auth:
+  type: bearer
+  credentials:
+    token: '{{adminAccessToken}}'
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('status is 201', function () { pm.response.to.have.status(201); });
+      pm.collectionVariables.set('productId', pm.response.json().data.id);
+    language: text/javascript
+order: 1000

@@ -1,0 +1,20 @@
+$kind: http-request
+url: '{{baseUrl}}/products'
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: '{"name":"Forbidden by smoke","description":"rbac","price":10,"stock":1}'
+auth:
+  type: bearer
+  credentials:
+    token: '{{userAccessToken}}'
+scripts:
+  - type: afterResponse
+    code: |-
+      const body = pm.response.json();
+      pm.test('status is 403 for non-admin product create', function () { pm.response.to.have.status(403); });
+      pm.test('error envelope is present', function () { pm.expect(body.success).to.eql(false); });
+    language: text/javascript
+order: 3000

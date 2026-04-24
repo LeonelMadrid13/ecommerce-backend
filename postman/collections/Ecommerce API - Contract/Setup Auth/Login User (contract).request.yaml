@@ -1,0 +1,20 @@
+$kind: http-request
+url: '{{baseUrl}}/auth/login'
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: '{"email":"{{userEmail}}","password":"{{userPassword}}"}'
+scripts:
+  - type: afterResponse
+    code: |-
+      const body = pm.response.json();
+      pm.test('status is 200', function () { pm.response.to.have.status(200); });
+      pm.test('envelope contains success/data/timestamp', function () {
+        pm.expect(body.success).to.eql(true);
+        pm.expect(body).to.have.property('timestamp');
+      });
+      pm.collectionVariables.set('userAccessToken', body.data.access_token);
+    language: text/javascript
+order: 2000

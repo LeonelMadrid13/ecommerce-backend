@@ -1,0 +1,28 @@
+$kind: http-request
+url: '{{baseUrl}}/products'
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: '{"name":"Contract Laptop","description":"Created by contract suite","price":1800.5,"stock":5}'
+auth:
+  type: bearer
+  credentials:
+    token: '{{adminAccessToken}}'
+scripts:
+  - type: afterResponse
+    code: |-
+      const body = pm.response.json();
+      pm.test('status is 201', function () { pm.response.to.have.status(201); });
+      pm.test('product contract shape', function () {
+        pm.expect(body.success).to.eql(true);
+        pm.expect(body.data.id).to.be.a('string');
+        pm.expect(body.data.name).to.eql('Contract Laptop');
+        pm.expect(body.data.price).to.be.a('number');
+        pm.expect(body.data.stock).to.be.a('number');
+      });
+      pm.collectionVariables.set('productId', body.data.id);
+      pm.collectionVariables.set('idempotencyKey', 'contract-' + Date.now());
+    language: text/javascript
+order: 2000

@@ -52,7 +52,7 @@ for attempt in $(seq 1 45); do
   sleep 2
 done
 
-echo "[postman-local] Running Newman suite..."
+echo "[postman-local] Running Newman suites..."
 pnpm test:postman:ci
 
 echo "[postman-local] Done."

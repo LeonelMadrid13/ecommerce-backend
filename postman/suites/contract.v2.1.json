@@ -1,0 +1,258 @@
+{
+  "info": {
+    "_postman_id": "3d5e5972-0cf6-4399-b98f-f2af4f8f7d02",
+    "name": "Ecommerce API - Contract",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "adminEmail", "value": "admin@example.com" },
+    { "key": "adminPassword", "value": "password123" },
+    { "key": "userEmail", "value": "leonel@example.com" },
+    { "key": "userPassword", "value": "password123" },
+    { "key": "adminAccessToken", "value": "" },
+    { "key": "userAccessToken", "value": "" },
+    { "key": "productId", "value": "" },
+    { "key": "firstOrderId", "value": "" },
+    { "key": "idempotencyKey", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Setup Auth",
+      "item": [
+        {
+          "name": "Login Admin (contract)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{adminEmail}}\",\"password\":\"{{adminPassword}}\"}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('envelope contains success/data/timestamp', function () {",
+                  "  pm.expect(body.success).to.eql(true);",
+                  "  pm.expect(body).to.have.property('data');",
+                  "  pm.expect(body).to.have.property('timestamp');",
+                  "});",
+                  "pm.test('token contract is valid', function () {",
+                  "  pm.expect(body.data.access_token).to.be.a('string').and.not.empty;",
+                  "  pm.expect(body.data.refresh_token).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.collectionVariables.set('adminAccessToken', body.data.access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login User (contract)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{userEmail}}\",\"password\":\"{{userPassword}}\"}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('envelope contains success/data/timestamp', function () {",
+                  "  pm.expect(body.success).to.eql(true);",
+                  "  pm.expect(body).to.have.property('timestamp');",
+                  "});",
+                  "pm.collectionVariables.set('userAccessToken', body.data.access_token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Contract Assertions",
+      "item": [
+        {
+          "name": "Get Profile contract",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/users/profile"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('profile contract shape', function () {",
+                  "  pm.expect(body.success).to.eql(true);",
+                  "  pm.expect(body.data).to.have.property('id');",
+                  "  pm.expect(body.data).to.have.property('email');",
+                  "  pm.expect(body.data).to.have.property('role');",
+                  "  pm.expect(body.timestamp).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Product contract",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Contract Laptop\",\"description\":\"Created by contract suite\",\"price\":1800.5,\"stock\":5}"
+            },
+            "url": "{{baseUrl}}/products"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('status is 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('product contract shape', function () {",
+                  "  pm.expect(body.success).to.eql(true);",
+                  "  pm.expect(body.data.id).to.be.a('string');",
+                  "  pm.expect(body.data.name).to.eql('Contract Laptop');",
+                  "  pm.expect(body.data.price).to.be.a('number');",
+                  "  pm.expect(body.data.stock).to.be.a('number');",
+                  "});",
+                  "pm.collectionVariables.set('productId', body.data.id);",
+                  "pm.collectionVariables.set('idempotencyKey', 'contract-' + Date.now());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Order with fixed idempotency key",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{idempotencyKey}}" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"items\":[{\"productId\":\"{{productId}}\",\"quantity\":1}]}"
+            },
+            "url": "{{baseUrl}}/orders"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('status is 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('order contract shape', function () {",
+                  "  pm.expect(body.success).to.eql(true);",
+                  "  pm.expect(body.data.orderId).to.be.a('string');",
+                  "  pm.expect(body.timestamp).to.be.a('string');",
+                  "});",
+                  "pm.collectionVariables.set('firstOrderId', body.data.orderId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Replay Order with same idempotency key",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{idempotencyKey}}" }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"items\":[{\"productId\":\"{{productId}}\",\"quantity\":1}]}"
+            },
+            "url": "{{baseUrl}}/orders"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const replayOrderId = body?.data?.orderId || body?.orderId;",
+                  "pm.test('status is 200 on idempotent replay', function () { pm.response.to.have.status(200); });",
+                  "pm.test('idempotent replay returns same order id', function () {",
+                  "  pm.expect(replayOrderId).to.be.a('string');",
+                  "  pm.expect(replayOrderId).to.eql(pm.collectionVariables.get('firstOrderId'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
