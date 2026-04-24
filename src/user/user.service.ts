@@ -2,37 +2,32 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
+  Inject,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service.js';
 import * as bcrypt from 'bcrypt';
+
+import {
+  USER_REPOSITORY,
+  type UserRepositoryPort,
+} from './user.repository.port.js';
 
 @Injectable()
 export class UserService {
-  constructor(private readonly prisma: PrismaService) {}
-
-  private readonly userSafeSelect = {
-    id: true,
-    name: true,
-    email: true,
-    role: true,
-    createdAt: true,
-    updatedAt: true,
-  } as const;
+  constructor(
+    @Inject(USER_REPOSITORY)
+    private readonly userRepository: UserRepositoryPort,
+  ) {}
 
   async createUser(data: { name: string; email: string; password: string }) {
-    const existing = await this.prisma.user.findUnique({
-      where: { email: data.email },
-    });
+    const existing = await this.userRepository.findByEmail(data.email);
     if (existing) throw new BadRequestException('Email already in use');
 
     const hashed = await bcrypt.hash(data.password, 10);
-    return this.prisma.user.create({
-      data: { ...data, password: hashed },
-    });
+    return this.userRepository.create({ ...data, password: hashed });
   }
 
   async validateUser(email: string, password: string) {
-    const user = await this.prisma.user.findUnique({ where: { email } });
+    const user = await this.userRepository.findByEmail(email);
     if (!user) return null;
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -42,17 +37,11 @@ export class UserService {
   }
 
   async findAll() {
-    return this.prisma.user.findMany({
-      select: this.userSafeSelect,
-      orderBy: { createdAt: 'desc' },
-    });
+    return this.userRepository.findAllSafe();
   }
 
   async findById(id: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
-      select: this.userSafeSelect,
-    });
+    const user = await this.userRepository.findByIdSafe(id);
     if (!user) throw new NotFoundException('User not found');
 
     return user;
