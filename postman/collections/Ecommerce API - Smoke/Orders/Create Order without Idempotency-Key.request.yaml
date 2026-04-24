@@ -1,0 +1,23 @@
+$kind: http-request
+url: '{{baseUrl}}/orders'
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: '{"items":[{"productId":"{{productId}}","quantity":1}]}'
+auth:
+  type: bearer
+  credentials:
+    token: '{{userAccessToken}}'
+scripts:
+  - type: afterResponse
+    code: |-
+      const body = pm.response.json();
+      pm.test('status is 400 when idempotency key is missing', function () { pm.response.to.have.status(400); });
+      pm.test('error message references Idempotency-Key', function () {
+        pm.expect(body.success).to.eql(false);
+        pm.expect(String(body.message)).to.include('Idempotency-Key');
+      });
+    language: text/javascript
+order: 1000

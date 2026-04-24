@@ -63,5 +63,5 @@ jobs:
           cat api.log
           exit 1
 
-      - name: Run Newman suite
+      - name: Run Newman suites
         run: pnpm test:postman:ci

@@ -1,0 +1,11 @@
+$kind: http-request
+url: '{{baseUrl}}/users/profile'
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      const body = pm.response.json();
+      pm.test('status is 401', function () { pm.response.to.have.status(401); });
+      pm.test('error envelope is present', function () { pm.expect(body.success).to.eql(false); });
+    language: text/javascript
+order: 1000

@@ -1,0 +1,147 @@
+{
+  "info": {
+    "_postman_id": "f5e7352b-31cf-432f-9ed5-f3af4f8f7d03",
+    "name": "Ecommerce API - Security",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [{ "key": "baseUrl", "value": "http://localhost:3000" }],
+  "item": [
+    {
+      "name": "Auth hardening",
+      "item": [
+        {
+          "name": "Login fails with invalid credentials",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"bad@example.com\",\"password\":\"wrong-password\"}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('status is 401', function () { pm.response.to.have.status(401); });",
+                  "pm.test('error envelope is present', function () {",
+                  "  pm.expect(body.success).to.eql(false);",
+                  "  pm.expect(body).to.have.property('message');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh fails with invalid token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"refresh_token\":\"definitely-invalid-token\"}"
+            },
+            "url": "{{baseUrl}}/auth/refresh"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('status is 401', function () { pm.response.to.have.status(401); });",
+                  "pm.test('error envelope is present', function () {",
+                  "  pm.expect(body.success).to.eql(false);",
+                  "  pm.expect(body).to.have.property('message');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Unauthorized access",
+      "item": [
+        {
+          "name": "Profile fails without token",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/users/profile"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('status is 401', function () { pm.response.to.have.status(401); });",
+                  "pm.test('error envelope is present', function () { pm.expect(body.success).to.eql(false); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Profile fails with malformed token",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "bad.token.value", "type": "string" }
+              ]
+            },
+            "url": "{{baseUrl}}/users/profile"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('status is 401', function () { pm.response.to.have.status(401); });",
+                  "pm.test('error envelope is present', function () { pm.expect(body.success).to.eql(false); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Protected products endpoint fails without token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"No token product\",\"description\":\"security\",\"price\":10,\"stock\":1}"
+            },
+            "url": "{{baseUrl}}/products"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('status is 401', function () { pm.response.to.have.status(401); });",
+                  "pm.test('error envelope is present', function () { pm.expect(body.success).to.eql(false); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

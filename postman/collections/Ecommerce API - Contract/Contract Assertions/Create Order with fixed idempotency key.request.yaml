@@ -1,0 +1,26 @@
+$kind: http-request
+url: '{{baseUrl}}/orders'
+method: POST
+headers:
+  Content-Type: application/json
+  Idempotency-Key: '{{idempotencyKey}}'
+body:
+  type: text
+  content: '{"items":[{"productId":"{{productId}}","quantity":1}]}'
+auth:
+  type: bearer
+  credentials:
+    token: '{{userAccessToken}}'
+scripts:
+  - type: afterResponse
+    code: |-
+      const body = pm.response.json();
+      pm.test('status is 201', function () { pm.response.to.have.status(201); });
+      pm.test('order contract shape', function () {
+        pm.expect(body.success).to.eql(true);
+        pm.expect(body.data.orderId).to.be.a('string');
+        pm.expect(body.timestamp).to.be.a('string');
+      });
+      pm.collectionVariables.set('firstOrderId', body.data.orderId);
+    language: text/javascript
+order: 3000

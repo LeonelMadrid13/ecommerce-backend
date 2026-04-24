@@ -1,0 +1,25 @@
+$kind: http-request
+url: '{{baseUrl}}/orders'
+method: POST
+headers:
+  Content-Type: application/json
+  Idempotency-Key: '{{idempotencyKey}}'
+body:
+  type: text
+  content: '{"items":[{"productId":"{{productId}}","quantity":1}]}'
+auth:
+  type: bearer
+  credentials:
+    token: '{{userAccessToken}}'
+scripts:
+  - type: afterResponse
+    code: |-
+      const body = pm.response.json();
+      const replayOrderId = body?.data?.orderId || body?.orderId;
+      pm.test('status is 200 on idempotent replay', function () { pm.response.to.have.status(200); });
+      pm.test('idempotent replay returns same order id', function () {
+        pm.expect(replayOrderId).to.be.a('string');
+        pm.expect(replayOrderId).to.eql(pm.collectionVariables.get('firstOrderId'));
+      });
+    language: text/javascript
+order: 4000

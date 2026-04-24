@@ -1,0 +1,12 @@
+$kind: collection
+variables:
+  baseUrl: http://localhost:3000
+  adminEmail: admin@example.com
+  adminPassword: password123
+  userEmail: leonel@example.com
+  userPassword: password123
+  adminAccessToken: ''
+  userAccessToken: ''
+  userRefreshToken: ''
+  productId: ''
+  orderId: ''
