@@ -1,10 +1,14 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { Inject } from '@nestjs/common';
 import { PinoLogger, InjectPinoLogger } from 'nestjs-pino';
 import { Job } from 'bullmq';
 
-import { PrismaService } from '../prisma/prisma.service.js';
 import { QUEUES } from '../queue/queue.module.js';
 import { ORDER_JOBS, ProcessOrderPayload } from '../queue/jobs/order.jobs.js';
+import {
+  ORDER_PROCESSING_REPOSITORY,
+  type OrderProcessingRepositoryPort,
+} from './order-processing.repository.port.js';
 
 class NonRetryableError extends Error {
   constructor(message: string) {
@@ -16,7 +20,8 @@ class NonRetryableError extends Error {
 @Processor(QUEUES.ORDERS)
 export class OrderProcessor extends WorkerHost {
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(ORDER_PROCESSING_REPOSITORY)
+    private readonly orderProcessingRepository: OrderProcessingRepositoryPort,
     @InjectPinoLogger(OrderProcessor.name)
     private readonly logger: PinoLogger,
   ) {
@@ -40,11 +45,8 @@ export class OrderProcessor extends WorkerHost {
     );
 
     try {
-      await this.prisma.$transaction(async (tx) => {
-        const order = await tx.order.findUnique({
-          where: { id: orderId },
-          include: { orderItems: true },
-        });
+      await this.orderProcessingRepository.withTransaction(async (tx) => {
+        const order = await tx.findOrderByIdWithItems(orderId);
 
         if (!order) {
           throw new NonRetryableError(`Order ${orderId} not found`);
@@ -60,9 +62,7 @@ export class OrderProcessor extends WorkerHost {
 
         const productIds = order.orderItems.map((i) => i.productId);
 
-        const products = await tx.product.findMany({
-          where: { id: { in: productIds } },
-        });
+        const products = await tx.findProductsByIds(productIds);
 
         const foundIds = new Set(products.map((p) => p.id));
         const missing = productIds.filter((id) => !foundIds.has(id));
@@ -88,15 +88,12 @@ export class OrderProcessor extends WorkerHost {
         }
 
         for (const item of order.orderItems) {
-          const updated = await tx.product.updateMany({
-            where: {
-              id: item.productId,
-              stock: { gte: item.quantity },
-            },
-            data: { stock: { decrement: item.quantity } },
-          });
+          const updated = await tx.decrementStockIfAvailable(
+            item.productId,
+            item.quantity,
+          );
 
-          if (updated.count === 0) {
+          if (!updated) {
             throw new Error(
               `Stock changed mid-transaction for product ${item.productId}`,
             );
@@ -106,21 +103,10 @@ export class OrderProcessor extends WorkerHost {
         for (const item of order.orderItems) {
           const product = productMap.get(item.productId)!;
 
-          await tx.orderItem.update({
-            where: {
-              orderId_productId: {
-                orderId: order.id,
-                productId: item.productId,
-              },
-            },
-            data: { priceAtPurchase: product.price },
-          });
+          await tx.setOrderItemPrice(order.id, item.productId, product.price);
         }
 
-        await tx.order.update({
-          where: { id: orderId },
-          data: { total, status: 'CONFIRMED' },
-        });
+        await tx.confirmOrder(orderId, total);
       });
 
       this.logger.info({ orderId }, 'Order confirmed');
@@ -129,10 +115,7 @@ export class OrderProcessor extends WorkerHost {
       const exhausted = job.attemptsMade + 1 >= (job.opts.attempts ?? 1);
 
       if (isNonRetryable || exhausted) {
-        await this.prisma.order.update({
-          where: { id: orderId },
-          data: { status: 'FAILED' },
-        });
+        await this.orderProcessingRepository.markAsFailed(orderId);
 
         const errMessage = err instanceof Error ? err.message : 'Unknown error';
         this.logger.error({ orderId, errMessage }, 'Order failed permanently');
