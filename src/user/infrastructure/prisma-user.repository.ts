@@ -1,6 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
-import { PrismaService } from '../../prisma/prisma.service.js';
+import {
+  DATABASE_CONNECTION,
+  type DatabaseConnection,
+} from '../../database/database.tokens.js';
 import type {
   CreateUserRecord,
   UserRepositoryPort,
@@ -17,25 +20,28 @@ export class PrismaUserRepository implements UserRepositoryPort {
     updatedAt: true,
   } as const;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(DATABASE_CONNECTION)
+    private readonly db: DatabaseConnection,
+  ) {}
 
   findByEmail(email: string) {
-    return this.prisma.user.findUnique({ where: { email } });
+    return this.db.user.findUnique({ where: { email } });
   }
 
   create(data: CreateUserRecord) {
-    return this.prisma.user.create({ data });
+    return this.db.user.create({ data });
   }
 
   findAllSafe() {
-    return this.prisma.user.findMany({
+    return this.db.user.findMany({
       select: this.userSafeSelect,
       orderBy: { createdAt: 'desc' },
     });
   }
 
   findByIdSafe(id: string) {
-    return this.prisma.user.findUnique({
+    return this.db.user.findUnique({
       where: { id },
       select: this.userSafeSelect,
     });
