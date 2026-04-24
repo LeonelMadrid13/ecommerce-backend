@@ -63,12 +63,13 @@ This project follows the PRD goals: authentication, product management, idempote
 ```txt
 src/
 ├─ auth/      # auth controller/service, jwt strategy
-├─ user/      # user profile + credential validation
+├─ user/      # user profile + credential validation (port + Prisma adapter)
 ├─ product/   # product CRUD
 ├─ order/     # order API + async processor
 ├─ queue/     # BullMQ + Redis provider
-├─ prisma/    # Prisma service/module
-└─ common/    # guards, interceptors, filters
+├─ prisma/    # Prisma client provider
+├─ database/  # abstract DATABASE_CONNECTION provider token
+└─ common/    # shared guards, interceptors, filters
 ```
 
 > The codebase is modular and ready to evolve toward microservices later.
@@ -155,6 +156,22 @@ pnpm seed
 pnpm start:dev
 ```
 
+### One-command dev bootstrap
+
+```bash
+pnpm start:dev:all
+```
+
+This runs Docker infra + seed + dev server in sequence.
+
+### Run local API validation suites (Postman/Newman)
+
+```bash
+pnpm test:postman:local
+```
+
+This script starts infra, prepares Prisma, boots the API, runs smoke/contract/security suites, and cleans up.
+
 Swagger UI:
 
 - `http://localhost:3000/docs`
@@ -163,13 +180,38 @@ Swagger UI:
 
 ## 7) Useful Scripts
 
+- `pnpm run help` → list all project scripts with grouped descriptions
 - `pnpm start:dev` → run in watch mode
+- `pnpm start:dev:all` → docker + seed + dev server in one command
 - `pnpm build` → build project
 - `pnpm start:prod` → run compiled app
 - `pnpm lint` → lint and autofix
+- `pnpm lint:check` → lint in check mode
+- `pnpm typecheck` → TypeScript type validation
 - `pnpm test` → unit tests
 - `pnpm test:e2e` → e2e tests
 - `pnpm test:cov` → coverage
+- `pnpm test:postman:all` → run smoke/contract/security suites against localhost
+- `pnpm test:postman:ci` → run smoke/contract/security suites with CI flags
+- `pnpm test:postman:local` → one-shot local infra + API + Newman execution
+- `pnpm verify:secure` → lint + typecheck + unit + e2e + high-level dependency audit
+
+### Maintaining script help when adding scripts
+
+When adding/removing/renaming scripts in `package.json`:
+
+1. Update the `descriptions` map in `scripts/pnpm-help.mjs`
+2. Validate output with:
+
+```bash
+pnpm run help
+```
+
+Optional flat output:
+
+```bash
+pnpm run help -- --flat
+```
 
 ---
 
