@@ -1,25 +1,26 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { jest } from '@jest/globals';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { ProductService } from './product.service.js';
-import { PrismaService } from '../prisma/prisma.service.js';
 
-type ProductRepoMock = {
+import { ProductService } from './product.service.js';
+import { PRODUCT_REPOSITORY } from './product.repository.port.js';
+
+type ProductRepositoryMock = {
   create: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
   findMany: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
-  findUnique: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+  findById: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+  exists: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
   update: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
-  delete: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
+  remove: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
 };
 
-const mockPrisma: { product: ProductRepoMock } = {
-  product: {
-    create: jest.fn(),
-    findMany: jest.fn(),
-    findUnique: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
-  },
+const mockProductRepository: ProductRepositoryMock = {
+  create: jest.fn(),
+  findMany: jest.fn(),
+  findById: jest.fn(),
+  exists: jest.fn(),
+  update: jest.fn(),
+  remove: jest.fn(),
 };
 
 describe('ProductService', () => {
@@ -29,7 +30,7 @@ describe('ProductService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProductService,
-        { provide: PrismaService, useValue: mockPrisma },
+        { provide: PRODUCT_REPOSITORY, useValue: mockProductRepository },
       ],
     }).compile();
 
@@ -65,15 +66,15 @@ describe('ProductService', () => {
       }
     });
 
-    it('should call prisma.product.create with correct data', async () => {
+    it('should call repository create with correct data', async () => {
       const dto = { name: 'Laptop', price: 1500, stock: 10 };
       const expected = { id: 'uuid-1', ...dto };
 
-      mockPrisma.product.create.mockResolvedValue(expected);
+      mockProductRepository.create.mockResolvedValue(expected);
 
       const result = await service.create(dto);
 
-      expect(mockPrisma.product.create).toHaveBeenCalledWith({ data: dto });
+      expect(mockProductRepository.create).toHaveBeenCalledWith(dto);
       expect(result).toEqual(expected);
     });
   });
@@ -86,15 +87,11 @@ describe('ProductService', () => {
         { id: 'uuid-1', name: 'Laptop', price: 1500, stock: 10 },
       ];
 
-      mockPrisma.product.findMany.mockResolvedValue(products);
+      mockProductRepository.findMany.mockResolvedValue(products);
 
       const result = await service.findAll(10, 0);
 
-      expect(mockPrisma.product.findMany).toHaveBeenCalledWith({
-        take: 10,
-        skip: 0,
-        select: { id: true, name: true, price: true, stock: true },
-      });
+      expect(mockProductRepository.findMany).toHaveBeenCalledWith(10, 0);
       expect(result).toEqual(products);
     });
   });
@@ -105,7 +102,7 @@ describe('ProductService', () => {
     it('should return a product if found', async () => {
       const product = { id: 'uuid-1', name: 'Laptop', price: 1500, stock: 10 };
 
-      mockPrisma.product.findUnique.mockResolvedValue(product);
+      mockProductRepository.findById.mockResolvedValue(product);
 
       const result = await service.findOne('uuid-1');
 
@@ -113,7 +110,7 @@ describe('ProductService', () => {
     });
 
     it('should throw NotFoundException if product does not exist', async () => {
-      mockPrisma.product.findUnique.mockResolvedValue(null);
+      mockProductRepository.findById.mockResolvedValue(null);
 
       try {
         await service.findOne('non-existent');
@@ -138,7 +135,7 @@ describe('ProductService', () => {
     });
 
     it('should throw NotFoundException if product does not exist', async () => {
-      mockPrisma.product.findUnique.mockResolvedValue(null);
+      mockProductRepository.exists.mockResolvedValue(false);
 
       try {
         await service.update('non-existent', { name: 'New Name' });
@@ -149,22 +146,21 @@ describe('ProductService', () => {
     });
 
     it('should update product if it exists and data is valid', async () => {
-      const existing = { id: 'uuid-1', name: 'Laptop', price: 1500, stock: 10 };
       const dto = { name: 'Gaming Laptop' };
-      const updated = { ...existing, ...dto };
+      const updated = {
+        id: 'uuid-1',
+        name: 'Gaming Laptop',
+        price: 1500,
+        stock: 10,
+      };
 
-      mockPrisma.product.findUnique.mockResolvedValue(existing);
-      mockPrisma.product.update.mockResolvedValue(updated);
+      mockProductRepository.exists.mockResolvedValue(true);
+      mockProductRepository.update.mockResolvedValue(updated);
 
       const result = await service.update('uuid-1', dto);
 
-      expect(mockPrisma.product.findUnique).toHaveBeenCalledWith({
-        where: { id: 'uuid-1' },
-      });
-      expect(mockPrisma.product.update).toHaveBeenCalledWith({
-        where: { id: 'uuid-1' },
-        data: dto,
-      });
+      expect(mockProductRepository.exists).toHaveBeenCalledWith('uuid-1');
+      expect(mockProductRepository.update).toHaveBeenCalledWith('uuid-1', dto);
       expect(result).toEqual(updated);
     });
   });
@@ -173,7 +169,7 @@ describe('ProductService', () => {
 
   describe('remove', () => {
     it('should throw NotFoundException if product does not exist', async () => {
-      mockPrisma.product.findUnique.mockResolvedValue(null);
+      mockProductRepository.exists.mockResolvedValue(false);
 
       try {
         await service.remove('non-existent');
@@ -184,16 +180,19 @@ describe('ProductService', () => {
     });
 
     it('should delete product if it exists', async () => {
-      const existing = { id: 'uuid-1', name: 'Laptop', price: 1500, stock: 10 };
+      const existing = {
+        id: 'uuid-1',
+        name: 'Laptop',
+        price: 1500,
+        stock: 10,
+      };
 
-      mockPrisma.product.findUnique.mockResolvedValue(existing);
-      mockPrisma.product.delete.mockResolvedValue(existing);
+      mockProductRepository.exists.mockResolvedValue(true);
+      mockProductRepository.remove.mockResolvedValue(existing);
 
       const result = await service.remove('uuid-1');
 
-      expect(mockPrisma.product.delete).toHaveBeenCalledWith({
-        where: { id: 'uuid-1' },
-      });
+      expect(mockProductRepository.remove).toHaveBeenCalledWith('uuid-1');
       expect(result).toEqual(existing);
     });
   });

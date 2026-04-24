@@ -2,45 +2,36 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Inject,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service.js';
+
 import { CreateProductDto } from './dto/create-product.dto.js';
 import { UpdateProductDto } from './dto/update-product.dto.js';
+import {
+  PRODUCT_REPOSITORY,
+  type ProductRepositoryPort,
+} from './product.repository.port.js';
 
 @Injectable()
 export class ProductService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    @Inject(PRODUCT_REPOSITORY)
+    private readonly productRepository: ProductRepositoryPort,
+  ) {}
 
   create(data: CreateProductDto) {
     if (data.price <= 0) {
       throw new BadRequestException('Price must be greater than 0');
     }
-    return this.prisma.product.create({ data });
+    return this.productRepository.create(data);
   }
 
   findAll(limit = 10, offset = 0) {
-    return this.prisma.product.findMany({
-      take: limit,
-      skip: offset,
-      select: {
-        id: true,
-        name: true,
-        price: true,
-        stock: true,
-      },
-    });
+    return this.productRepository.findMany(limit, offset);
   }
 
   async findOne(id: string) {
-    const product = await this.prisma.product.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        name: true,
-        price: true,
-        stock: true,
-      },
-    });
+    const product = await this.productRepository.findById(id);
 
     if (!product) {
       throw new NotFoundException('Product not found');
@@ -54,31 +45,22 @@ export class ProductService {
       throw new BadRequestException('Price must be greater than 0');
     }
 
-    const existing = await this.prisma.product.findUnique({
-      where: { id },
-    });
+    const exists = await this.productRepository.exists(id);
 
-    if (!existing) {
+    if (!exists) {
       throw new NotFoundException('Product not found');
     }
 
-    return this.prisma.product.update({
-      where: { id },
-      data,
-    });
+    return this.productRepository.update(id, data);
   }
 
   async remove(id: string) {
-    const existing = await this.prisma.product.findUnique({
-      where: { id },
-    });
+    const exists = await this.productRepository.exists(id);
 
-    if (!existing) {
+    if (!exists) {
       throw new NotFoundException('Product not found');
     }
 
-    return this.prisma.product.delete({
-      where: { id },
-    });
+    return this.productRepository.remove(id);
   }
 }
