@@ -134,6 +134,7 @@ DATABASE_URL="postgresql://postgres:secret@localhost:5432/postgres"
 JWT_SECRET="supersecretkey"
 REDIS_HOST=localhost
 REDIS_PORT=6379
+BCRYPT_SALT_ROUNDS=10
 NODE_ENV=development
 PORT=3000
 ```
