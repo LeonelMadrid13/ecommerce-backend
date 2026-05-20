@@ -1,2 +1,2 @@
-pnpm typecheck
-pnpm test
+node node_modules/typescript/bin/tsc --noEmit
+node --experimental-vm-modules node_modules/jest/bin/jest.js

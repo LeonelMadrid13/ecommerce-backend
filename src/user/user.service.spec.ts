@@ -4,6 +4,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 import { UserService } from './user.service.js';
 import { USER_REPOSITORY } from './user.repository.port.js';
+import { ConfigService } from '@nestjs/config';
 
 type UserRepositoryMock = {
   create: jest.Mock<(...args: unknown[]) => Promise<unknown>>;
@@ -19,6 +20,15 @@ const mockUserRepository: UserRepositoryMock = {
   findByIdSafe: jest.fn(),
 };
 
+const mockConfigService: Pick<ConfigService, 'get'> & {
+  get: jest.Mock<(key: string) => string | undefined>;
+} = {
+  get: jest.fn((key: string) => {
+    if (key === 'BCRYPT_SALT_ROUNDS') return '10';
+    return undefined;
+  }),
+};
+
 describe('UserService', () => {
   let service: UserService;
 
@@ -27,11 +37,16 @@ describe('UserService', () => {
       providers: [
         UserService,
         { provide: USER_REPOSITORY, useValue: mockUserRepository },
+        { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();
 
     service = module.get<UserService>(UserService);
     jest.clearAllMocks();
+    mockConfigService.get.mockImplementation((key: string) => {
+      if (key === 'BCRYPT_SALT_ROUNDS') return '10';
+      return undefined;
+    });
   });
 
   it('should be defined', () => {
@@ -87,6 +102,19 @@ describe('UserService', () => {
       expect(createArgs?.name).toBe('Test');
       expect(typeof createArgs?.password).toBe('string');
       expect(result).toBeDefined();
+    });
+
+    it('should throw if bcrypt rounds config is invalid', async () => {
+      mockUserRepository.findByEmail.mockResolvedValue(null);
+      mockConfigService.get.mockReturnValue('abc');
+
+      await expect(
+        service.createUser({
+          name: 'Test',
+          email: 'test@example.com',
+          password: 'password123',
+        }),
+      ).rejects.toThrow('Invalid bcrypt rounds');
     });
   });
 
